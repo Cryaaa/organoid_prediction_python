@@ -13,11 +13,11 @@ def calculate_distance_matrix(visibilityGraphs:dict)-> np.ndarray:
         graph1 = visibilityGraphs[index+1]
         for pair in range(len(visibilityGraphs)):
             graph2 = visibilityGraphs[pair+1]
-            distance = calculate_Laplacian(graph1, graph2)
+            distance = _calculate_Laplacian(graph1, graph2)
             distanceMatrix[index, pair] = distance
     return(distanceMatrix)
 
-def calculate_Laplacian(graph1, graph2):
+def _calculate_Laplacian(graph1, graph2):
     """
     calculate the distance between two graphs using the Kolmogorov-Smirnov statistic of the eigenvalue 
     distributions of the Laplacian matrices
