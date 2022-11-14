@@ -83,12 +83,25 @@ def distance_series(
     return pd.Series(data=distances,index=index,name=column_name)
 
 # TODO docstring
-def split_by_cellprofiler_category(dataframe: pd.DataFrame) -> dict:
+def split_by_cellprofiler_category(
+    dataframe: pd.DataFrame, 
+    annotation_keys:list = ["Axes","Morph","Morph_Class","Run.1"],
+) -> dict:
     output = {}
+    annotation_keys_present = [key for key in dataframe.keys() if key in annotation_keys]
+    if len(annotation_keys_present) > 0:
+        annotation_df = dataframe[annotation_keys_present]
+    
     prefixes = ["AreaShape","Granularity","Intensity","Texture","RadialDistribution"]
     for prefix in prefixes:
         keys = [key for key in dataframe.keys() if key.startswith(prefix)]
-        output[prefix] = dataframe[keys]
+
+        if len(annotation_keys_present) > 0:
+            df_sub = pd.concat([dataframe[keys],annotation_df],axis=1)
+        else:
+            df_sub = dataframe[keys]
+
+        output[prefix] = df_sub
     return output
 
 # TODO docstring    
