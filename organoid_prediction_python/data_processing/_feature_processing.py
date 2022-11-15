@@ -18,7 +18,7 @@ def correlation_filter(dataframe:pd.DataFrame, threshold:float = 0.95) -> pd.Dat
     """
     cor_matrix = dataframe.corr().abs()
     upper_tri = cor_matrix.where(np.triu(np.ones(cor_matrix.shape),k=1).astype(bool))
-    to_drop = [column for column in upper_tri.columns if any(upper_tri[column] > threshold)]
+    to_drop = [column for column in upper_tri.columns if any(upper_tri[column] >= threshold)]
     uncorrelating = dataframe.drop(to_drop, axis=1)
 
     return uncorrelating
@@ -86,6 +86,7 @@ def distance_series(
 def split_by_cellprofiler_category(
     dataframe: pd.DataFrame, 
     annotation_keys:list = ["Axes","Morph","Morph_Class","Run.1"],
+    bra_prefix:str = "BRA_"
 ) -> dict:
     output = {}
     annotation_keys_present = [key for key in dataframe.keys() if key in annotation_keys]
@@ -94,7 +95,7 @@ def split_by_cellprofiler_category(
     
     prefixes = ["AreaShape","Granularity","Intensity","Texture","RadialDistribution"]
     for prefix in prefixes:
-        keys = [key for key in dataframe.keys() if key.startswith(prefix)]
+        keys = [key for key in dataframe.keys() if key.startswith(prefix) or key.startswith(f"{bra_prefix}{prefix}")]
 
         if len(annotation_keys_present) > 0:
             df_sub = pd.concat([dataframe[keys],annotation_df],axis=1)
