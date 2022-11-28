@@ -137,3 +137,18 @@ def reform_cellprofiler_table(
     }
     dataframe.rename(columns=mapper,inplace=True)
     dataframe.drop(useless_keys,axis = 1 , inplace=True)
+
+# TODO docstring
+def correlation_filter_per_category_and_source(dataframe, correlation_threshold = 0.95):
+    BF_keys = [key for key in dataframe.keys() if not key.startswith("BRA")]
+    BRA_keys = [key for key in dataframe.keys() if key.startswith("BRA") and "Fraction" not in key]
+    Frac_keys = [key for key in dataframe.keys() if key.startswith("BRA") and "Fraction" in key]
+    source_keys = [BF_keys,BRA_keys,Frac_keys]
+
+    splits = [split_by_cellprofiler_category(dataframe[keys]) for keys in source_keys]
+    to_concat = []
+    for split in splits:
+        for k, df in split.items():
+            to_concat.append(correlation_filter(df,correlation_threshold))
+
+    return pd.concat(to_concat,axis = 1)
