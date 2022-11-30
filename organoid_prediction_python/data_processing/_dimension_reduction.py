@@ -33,7 +33,7 @@ def umap_with_indices_and_ground_truth(
     )
     if ground_truth_df is None:
         return umap_df
-    return pd.concat([umap_df,ground_truth_df[gt_keys]],axis=1).dropna()
+    return pd.concat([umap_df,ground_truth_df[gt_keys]],axis=1).dropna()    
 
 def PCA_with_indices_and_ground_truth(
     dataframe: pd.DataFrame,
