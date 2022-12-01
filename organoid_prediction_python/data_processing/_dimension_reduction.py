@@ -42,10 +42,12 @@ def PCA_with_indices_and_ground_truth(
     n_components=2,
     remove_unclassified = True,
 ):
-    if remove_unclassified:
-        dataframe = dataframe.loc[(ground_truth_df["Morph"]!="unclassified")&(ground_truth_df["Axes"]!="unclassified")]
-        if ground_truth_df is not None:
-            ground_truth_df = ground_truth_df.loc[(ground_truth_df["Morph"]!="unclassified")&(ground_truth_df["Axes"]!="unclassified")]
+    
+    if ground_truth_df is not None:
+        if remove_unclassified:
+            dataframe = dataframe.loc[(ground_truth_df["Morph"]!="unclassified")&(ground_truth_df["Axes"]!="unclassified")]
+        ground_truth_df = ground_truth_df.loc[(ground_truth_df["Morph"]!="unclassified")&(ground_truth_df["Axes"]!="unclassified")]
+        
 
     
     index = dataframe.index
