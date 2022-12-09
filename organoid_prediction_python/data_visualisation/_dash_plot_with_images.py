@@ -28,8 +28,8 @@ def get_dash_app_3D_scatter_hover_images(
 
     # Color for each digit
     color_map = list(sns.color_palette("tab10").as_hex())
-    labels = dataframe[hue]
-    mapping = {value:integer for integer,value in enumerate(dataframe[hue].unique())}
+    labels = dataframe[hue].to_numpy()
+    mapping = {value:integer for integer,value in enumerate(np.unique(labels))}
     colors = [color_map[mapping[label]] for label in labels]
     x,y,z = [dataframe[key].to_numpy() for key in plot_keys]
 
@@ -39,7 +39,7 @@ def get_dash_app_3D_scatter_hover_images(
         z=z,
         mode='markers',
         marker=dict(
-            size=6,
+            size=5,
             color=colors,
         )
     )])
@@ -48,6 +48,11 @@ def get_dash_app_3D_scatter_hover_images(
         hoverinfo="none",
         hovertemplate=None,
     )
+
+    fig.update_layout(
+        autosize=False,
+        width=1500,
+        height=800,)
 
     app = JupyterDash(__name__)
 
@@ -66,6 +71,7 @@ def get_dash_app_3D_scatter_hover_images(
         Input("graph-5", "hoverData"),
     )
     def display_hover(hoverData):
+        print("in hover")
         if hoverData is None:
             return False, no_update, no_update
 
@@ -79,11 +85,10 @@ def get_dash_app_3D_scatter_hover_images(
         children = [
             html.Div([
                 html.Img(
-                    src=im_url,
-                    style={"width": "350px", 'display': 'block', 'margin': '0 auto'},
+                    src=im_url, style={"width": "100%"},
                 ),
-                html.P("", style={'font-weight': 'bold'})
-            ])
+                html.P(hue + ": " + str(labels[num]), style={'font-weight': 'bold'})
+            ], style={'width': '200px', 'white-space': 'normal'})
         ]
 
         return True, bbox, children
