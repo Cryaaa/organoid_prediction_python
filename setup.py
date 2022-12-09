@@ -78,7 +78,7 @@ setup(
 
     install_requires=["seaborn","umap-learn","hdbscan","numpy", "pyopencl", "scikit-image", 
                       "scikit-learn", "pyclesperanto-prototype", "pandas",'pywebview',
-                      "pythonnet==3.0.0a2", "vispy"],  
+                      "pythonnet==3.0.0a2", "vispy", "networkx"],  
 
     project_urls={ 
         'Bug Reports': 'https://github.com/Cryaaa/organoid_prediction_python/issues',

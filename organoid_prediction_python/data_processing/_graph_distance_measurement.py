@@ -4,15 +4,13 @@ import networkx as nx
 import numpy as np
 import scipy as sp
 
-def calculate_distance_matrix(visibilityGraphs:dict)-> np.ndarray:
+def calculate_distance_matrix(visibilityGraphs:list)-> np.ndarray:
     """
     calculate the distance matrix of the input visibility graphs
     """
     distanceMatrix = np.zeros((len(visibilityGraphs), len(visibilityGraphs)))
-    for index in range(len(visibilityGraphs)):
-        graph1 = visibilityGraphs[index+1]
-        for pair in range(len(visibilityGraphs)):
-            graph2 = visibilityGraphs[pair+1]
+    for index, graph1 in enumerate(visibilityGraphs):
+        for pair, graph2 in enumerate(visibilityGraphs):
             distance = _calculate_Laplacian(graph1, graph2)
             distanceMatrix[index, pair] = distance
     return(distanceMatrix)
