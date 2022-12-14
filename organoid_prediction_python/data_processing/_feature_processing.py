@@ -27,7 +27,7 @@ def fraction_measurement(
     df1:pd.DataFrame,
     df2:pd.DataFrame,
     key, 
-    suffix: str = "Fraction_BRA_BFT",
+    name,
 ) -> pd.Series:
     """
     Measures the fraction between two columns of a dataframe. key determines the column 
@@ -54,7 +54,7 @@ def fraction_measurement(
     series2 = concat[mapp[key]].to_numpy()
     difference = [el1/el2 for el1,el2 in zip(series1,series2)]
 
-    return pd.Series(data=difference,index=index,name=f"{key}_{suffix}")
+    return pd.Series(data=difference,index=index,name=name)
 
 # TODO docstring
 def distance_series(
