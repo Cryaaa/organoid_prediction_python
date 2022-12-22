@@ -6,4 +6,4 @@ from ._2D_segmentation import (
 )
 
 from ._cropping import crop_image_or_mask_around_CM, crop_around_centroid
-from ._processing_masks import keep_label_closest_to_avg_size
+from ._processing_masks import keep_label_closest_to_avg_size, straighten_mask_and_image

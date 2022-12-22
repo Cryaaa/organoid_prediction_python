@@ -8,7 +8,23 @@ from skimage import measure
 
 from morgana.ImageTools.locoefa import computecoeff
 
-def calculate_morgana_shapes(masks, mask_paths):
+def calculate_morgana_shapes(
+    masks: np.ndarray, 
+    mask_paths: list,
+):
+    """
+    function calculates regionproperties of all images specified by masks 
+    and mask_paths
+
+    Parameters
+    ----------
+    masks: np.ndarray
+        1st dimension represents the list of images
+    mask_paths: list
+        list of strings specifying the full path where the 
+        masks are located. Order must match image order in
+        masks
+    """
     props = []
     for mask, mask_path in zip(masks,mask_paths):
         prop = compute_morphological_info_no_mesh(
@@ -22,8 +38,9 @@ def calculate_morgana_shapes(masks, mask_paths):
 
 # Taken from morgana and modified to work with straightened images
 def compute_morphological_info_no_mesh(
-    mask, f_ma,
-    keys = [
+    mask: np.ndarray, 
+    f_ma: str,
+    keys: list = [
         'centroid',
         'slice',
         'area',
@@ -39,7 +56,22 @@ def compute_morphological_info_no_mesh(
         'orientation',
     ]
 ):
+    """
+    Function adapted from the Morgana library to be easier to handle with
+    a more regular data structure. Computes shape features from skimage
+    as well as LOCO-EFA shape features.
 
+    Parameters
+    ----------
+
+    mask: np.ndarray
+        labeled binary image specifying objects to be quantified
+    f_ma: str
+        path to mask image which is used to return a column with the file name
+    keys: list
+        list of strings that specify which properties to measure. Must match 
+        property names found in skimage.measure.regionprops
+    """
     # label mask
     labeled_mask, _ = label(mask)
     # compute morphological info
@@ -56,7 +88,19 @@ def compute_morphological_info_no_mesh(
 
     return pd.Series(dict_)
 
-def reform_props(region_props):
+def reform_props(region_props: dict) -> None:
+    """
+    Function that takes regionproperties computed by morgana
+    (eg. compute_morphological_info_no_mesh function) and reforms it to
+    be usable in a machine learning setting (each column only has 1 value
+    per row). 
+
+    Parameters
+    ----------
+
+    region_props: dict
+        Regionproperties to be reformed
+    """
     region_props.pop('centroid')
     region_props.pop('slice')
     
