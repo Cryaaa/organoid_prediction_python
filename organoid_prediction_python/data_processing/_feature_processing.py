@@ -27,7 +27,7 @@ def fraction_measurement(
     df1:pd.DataFrame,
     df2:pd.DataFrame,
     key, 
-    suffix: str = "Fraction_BRA_BFT",
+    name,
 ) -> pd.Series:
     """
     Measures the fraction between two columns of a dataframe. key determines the column 
@@ -54,14 +54,107 @@ def fraction_measurement(
     series2 = concat[mapp[key]].to_numpy()
     difference = [el1/el2 for el1,el2 in zip(series1,series2)]
 
-    return pd.Series(data=difference,index=index,name=f"{key}_{suffix}")
+    return pd.Series(data=difference,index=index,name=name)
+ 
+def standardscale_per_plate(
+    dataframe: pd.DataFrame, 
+    grouping_keys: list =["Run", "Plate"],
+) -> pd.DataFrame:
+    """
+    Function that performs standard-scaling / z-normalisation in subgroups like 
+    plates of samples. The grouping_keys specify the index levels which will be 
+    grouped before being z-normalised / standard-scaled. 
 
-# TODO docstring
+    Parameters
+    ----------
+    dataframe: pd.DataFrame
+        Input DataFrame that will be processed. Must be a multi-index DataFrame
+    grouping_keys: list
+        list of strings that are part of the multiindex which will be used for
+        grouping
+    """
+    data = _try_dropping(dataframe)
+    grouped = data.groupby(grouping_keys)
+    transformed: pd.DataFrame =  grouped.transform(
+            lambda x: (x - x.mean()) / x.std()
+        )
+    transformed.dropna(axis=1,inplace = True)
+
+    return transformed
+
+def split_by_cellprofiler_category(
+    dataframe: pd.DataFrame, 
+    annotation_keys:list = ["Axes","Morph","Morph_Class","Run.1"],
+    bra_prefix:str = "BRA_"
+) -> dict:
+    """
+    Function that given a dataframe containing properties from cellprofiler
+    returns a list of dataframes split by cellprofiler categories. Any columns 
+    that do not match the cellprofiler categories are dropped. 
+
+    Parameters
+    ----------
+    dataframe: pd.DataFrame
+        Input dataframe containing cellprofiler data
+    annotation_keys: list
+        list of strings that match the columns in the dataframe containing
+        manual annotations
+    bra_prefix: str
+        String specifying a prefix which might be peresent in front of the 
+        cellprofiler column names
+    """
+    output = {}
+    annotation_keys_present = [key for key in dataframe.keys() if key in annotation_keys]
+    if len(annotation_keys_present) > 0:
+        annotation_df = dataframe[annotation_keys_present]
+    
+    prefixes = ["AreaShape","Granularity","Intensity","Texture","RadialDistribution"]
+    for prefix in prefixes:
+        keys = [key for key in dataframe.keys() if key.startswith(prefix) or key.startswith(f"{bra_prefix}{prefix}")]
+
+        if len(annotation_keys_present) > 0:
+            df_sub = pd.concat([dataframe[keys],annotation_df],axis=1)
+        else:
+            df_sub = dataframe[keys]
+
+        output[prefix] = df_sub
+    return output
+
+
+# TODO docstring or decide if I need to keep this
+def reform_cellprofiler_table(
+    dataframe: pd.DataFrame,
+    cellprofiler_useless_columns:list = [
+        "ImageNumber","Metadata_FileLocation","Metadata_Frame",
+        "Metadata_Series","Metadata_Channel",'AreaShape_NormalizedMoment_0_0', 
+        'AreaShape_NormalizedMoment_0_1', 'AreaShape_NormalizedMoment_1_0',
+    ]
+) -> None:
+    """
+    
+    """
+    useless_keys = []
+    for key in dataframe.keys():
+        if key.startswith("FileName") or key.startswith("PathName") or key in cellprofiler_useless_columns:
+            useless_keys.append(key)
+
+    mapper = {
+        "Metadata_Plate":"Plate",
+        "Metadata_Well":"ID",
+        "Metadata_Run":"Run"
+    }
+    dataframe.rename(columns=mapper,inplace=True)
+    dataframe.drop(useless_keys,axis = 1 , inplace=True)
+
+# TODO docstring or decide if to keep this
 def distance_series(
     dataframe1: pd.DataFrame,
     dataframe2: pd.DataFrame, 
     column_name = "Distance_BRA_Center",
 ) -> pd.Series:
+    """
+    
+    """
     location_keys = [
         'Location_Center_X',
         'Location_Center_Y'
@@ -82,63 +175,7 @@ def distance_series(
                  
     return pd.Series(data=distances,index=index,name=column_name)
 
-# TODO docstring
-def split_by_cellprofiler_category(
-    dataframe: pd.DataFrame, 
-    annotation_keys:list = ["Axes","Morph","Morph_Class","Run.1"],
-    bra_prefix:str = "BRA_"
-) -> dict:
-    output = {}
-    annotation_keys_present = [key for key in dataframe.keys() if key in annotation_keys]
-    if len(annotation_keys_present) > 0:
-        annotation_df = dataframe[annotation_keys_present]
-    
-    prefixes = ["AreaShape","Granularity","Intensity","Texture","RadialDistribution"]
-    for prefix in prefixes:
-        keys = [key for key in dataframe.keys() if key.startswith(prefix) or key.startswith(f"{bra_prefix}{prefix}")]
-
-        if len(annotation_keys_present) > 0:
-            df_sub = pd.concat([dataframe[keys],annotation_df],axis=1)
-        else:
-            df_sub = dataframe[keys]
-
-        output[prefix] = df_sub
-    return output
-
-# TODO docstring    
-def standardscale_per_plate(dataframe: pd.DataFrame, grouping_keys: list =["Run", "Plate"],) -> pd.DataFrame:
-    data = _try_dropping(dataframe)
-    grouped = data.groupby(grouping_keys)
-    transformed: pd.DataFrame =  grouped.transform(
-            lambda x: (x - x.mean()) / x.std()
-        )
-    transformed.dropna(axis=1,inplace = True)
-
-    return transformed
-
-# TODO docstring
-def reform_cellprofiler_table(
-    dataframe: pd.DataFrame,
-    cellprofiler_useless_columns:list = [
-        "ImageNumber","Metadata_FileLocation","Metadata_Frame",
-        "Metadata_Series","Metadata_Channel",'AreaShape_NormalizedMoment_0_0', 
-        'AreaShape_NormalizedMoment_0_1', 'AreaShape_NormalizedMoment_1_0',
-    ]
-) -> None:
-    useless_keys = []
-    for key in dataframe.keys():
-        if key.startswith("FileName") or key.startswith("PathName") or key in cellprofiler_useless_columns:
-            useless_keys.append(key)
-
-    mapper = {
-        "Metadata_Plate":"Plate",
-        "Metadata_Well":"ID",
-        "Metadata_Run":"Run"
-    }
-    dataframe.rename(columns=mapper,inplace=True)
-    dataframe.drop(useless_keys,axis = 1 , inplace=True)
-
-# TODO docstring
+# TODO docstring and decide if to keep this
 def correlation_filter_per_category_and_source(dataframe, correlation_threshold = 0.95):
     BF_keys = [key for key in dataframe.keys() if not key.startswith("BRA")]
     BRA_keys = [key for key in dataframe.keys() if key.startswith("BRA") and "Fraction" not in key]

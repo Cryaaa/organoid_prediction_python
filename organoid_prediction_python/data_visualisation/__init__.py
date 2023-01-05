@@ -1,1 +1,2 @@
 from ._dash_plot_with_images import get_dash_app_3D_scatter_hover_images
+from ._plotting import plotly3d

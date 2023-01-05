@@ -2,9 +2,8 @@ import pandas as pd
 from jupyter_dash import JupyterDash
 import io
 import base64
-import pickle
 import seaborn as sns
-from dash import Dash, dcc, html, Input, Output, no_update
+from dash import dcc, html, Input, Output, no_update
 import plotly.graph_objects as go
 
 from PIL import Image
@@ -38,6 +37,7 @@ def get_dash_app_3D_scatter_hover_images(
         y=y,
         z=z,
         mode='markers',
+        opacity=0.7,
         marker=dict(
             size=5,
             color=colors,
@@ -71,7 +71,6 @@ def get_dash_app_3D_scatter_hover_images(
         Input("graph-5", "hoverData"),
     )
     def display_hover(hoverData):
-        print("in hover")
         if hoverData is None:
             return False, no_update, no_update
 
