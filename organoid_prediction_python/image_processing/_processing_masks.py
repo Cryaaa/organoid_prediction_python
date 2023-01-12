@@ -26,7 +26,7 @@ def keep_label_closest_to_avg_size(mask, avg_size = 12000):
 # Code modified from Morgana: 
 # https://github.com/LabTrivedi/MOrgAna/blob/master/morgana/ImageTools/morphology/computemorphology.py
 # https://github.com/LabTrivedi/MOrgAna/blob/master/morgana/ImageTools/straightmorphology/computestraightmorphology.py
-# TODO docstring
+# TODO docstring and put into own file with license
 def straighten_mask_and_image(mask,intensity_image,image_to_reshape = None,margin = 3):
     
     strele = disk(margin)

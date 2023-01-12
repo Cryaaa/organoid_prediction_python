@@ -55,7 +55,34 @@ def fraction_measurement(
     difference = [el1/el2 for el1,el2 in zip(series1,series2)]
 
     return pd.Series(data=difference,index=index,name=name)
- 
+
+# TODO docstring
+def differential_standard_scaling(
+    dataframe, 
+    columns_regular, 
+    columns_by_index, 
+    columns_unscaled,
+    by_index_grouping = ["Run","Plate"],
+):
+    from sklearn.preprocessing import StandardScaler
+    
+    df_no_scaling = dataframe[columns_unscaled]
+    df_reg_scaling = dataframe[columns_regular]
+    df_index_scaling = dataframe[columns_by_index]
+    
+    df_reg_scaling = pd.DataFrame(
+        StandardScaler().fit_transform(df_reg_scaling), 
+        columns=columns_regular,
+        index = df_reg_scaling.index
+    )
+    
+    df_index_scaling = standardscale_per_plate(
+        df_index_scaling,
+        grouping_keys=by_index_grouping
+    )
+    
+    return pd.concat([df_no_scaling,df_reg_scaling,df_index_scaling],axis=1)
+
 def standardscale_per_plate(
     dataframe: pd.DataFrame, 
     grouping_keys: list =["Run", "Plate"],

@@ -36,7 +36,9 @@ def calculate_morgana_shapes(
     df = pd.concat(props,axis=1)
     return df.transpose()
 
-# Taken from morgana and modified to work with straightened images
+# TODO put in own file with license attached
+# Taken from morgana: https://github.com/LabTrivedi/MOrgAna and modified 
+# to work with straightened images and mask images without intensity images
 def compute_morphological_info_no_mesh(
     mask: np.ndarray, 
     f_ma: str,

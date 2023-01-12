@@ -9,6 +9,9 @@ import plotly.graph_objects as go
 from PIL import Image
 import numpy as np
 
+
+# code taken and modified from: https://dash.plotly.com/dash-core-components/tooltip?_gl=1*9tyg7p*_ga*NDYwMzcxMTAxLjE2Njk3MzgyODM.*_ga_6G7EE0JNSC*MTY3MzI2ODgyOS45LjEuMTY3MzI2OTA0Ni4wLjAuMA..
+# TODO put license here
 def get_dash_app_3D_scatter_hover_images(
     dataframe:pd.DataFrame,
     plot_keys:list, 
