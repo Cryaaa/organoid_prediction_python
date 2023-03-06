@@ -32,7 +32,8 @@ def extract_sample_identifiers(
         raw_columns["Filename"].append(name)
         for  regex_name in regex_column_names:
             raw_columns[regex_name].append(m.group(regex_name))
-        if "Plate" in regex_column_names:
-            raw_columns["Plate"] = np.array(raw_columns["Plate"]).astype(int)
+        
+    if "Plate" in regex_column_names:
+        raw_columns["Plate"] = np.array(raw_columns["Plate"]).astype(int)
         
     return pd.DataFrame(raw_columns)

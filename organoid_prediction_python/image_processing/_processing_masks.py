@@ -3,6 +3,9 @@ from skimage.measure import regionprops
 
 # TODO docstring
 def keep_label_closest_to_avg_size(mask, avg_size = 12000):
+    if np.max(mask) ==0:
+        return mask
+    
     areas=[]
     for prop in regionprops(mask):
         areas.append(prop["area"])

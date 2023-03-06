@@ -25,13 +25,22 @@ def calculate_morgana_shapes(
         masks
     """
     props = []
-    for mask, mask_path in zip(masks,mask_paths):
+    empty_img_indices = []
+    for i,(mask, mask_path) in enumerate(zip(masks,mask_paths)):
+        if np.max(mask)==0:
+            empty_img_indices.append(i)
+            continue
+
         prop = compute_morphological_info_no_mesh(
             mask,
             mask_path,
         )
         reform_props(prop)
         props.append(prop)
+
+    empty_prop = {k:[np.nan] for k in props[0].keys()}
+    for idx in empty_img_indices:
+        props.insert(idx,empty_prop)
     df = pd.concat(props,axis=1)
     return df.transpose()
 

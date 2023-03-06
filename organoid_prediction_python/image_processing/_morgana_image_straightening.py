@@ -15,7 +15,8 @@ from morgana.ImageTools.morphology import (
 # https://github.com/LabTrivedi/MOrgAna/blob/master/morgana/ImageTools/straightmorphology/computestraightmorphology.py
 # TODO docstring and License
 def straighten_mask_and_image(mask,intensity_image,image_to_reshape = None,margin = 3):
-    
+    if np.max(mask)==0:
+        return mask, intensity_image
     strele = disk(margin)
     dilated_mask = binary_dilation(mask,strele)
     dilated_mask = label(dilated_mask)[0]

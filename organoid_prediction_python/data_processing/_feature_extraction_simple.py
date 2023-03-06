@@ -15,6 +15,11 @@ def simple_brightfield_regionprops(
         "feret_diameter_max",
         "solidity"])
 ):
+    if np.max(bf_mask) ==0:
+        out = {k:[np.nan] for k in bf_prop_names}
+        out["aspect_ratio"]=[np.nan]
+        return out
+    
     bf_props_table = regionprops_table(bf_mask,bf_image,properties=bf_prop_names)
     bf_props_table["aspect_ratio"] = np.array([bf_props_table["axis_minor_length"][0]/bf_props_table["axis_major_length"][0]])
 
@@ -33,7 +38,12 @@ def simple_brachyury_regionprops(
         "solidity",
         "intensity_mean"])
 ):
-
+    if np.max(bra_mask) ==0:
+        out = {k:[np.nan] for k in bra_prop_names}
+        out["aspect_ratio"]=[np.nan]
+        out["area_fraction"]=[np.nan]
+        return out
+    
     def image_stdev(region, intensities):
             return np.std(intensities[region], ddof=1)
     
