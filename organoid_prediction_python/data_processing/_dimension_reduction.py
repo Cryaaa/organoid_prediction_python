@@ -16,12 +16,11 @@ def umap_with_indices_and_ground_truth(
 ):
     """
     Generates a UMAP from a dataframe and returns it as a dataframe
-    containing the grounbd truth specified by ground_truth_df. Both 
+    containing the ground truth specified by ground_truth_df. Both 
     dataframes need to have matching indices.
 
     Parameters
     ----------
-
     dataframe: pd.DataFrame
         Input dataframe from which the UMAP is generated.
     ground_truth_df: pd.Dataframe
@@ -40,6 +39,11 @@ def umap_with_indices_and_ground_truth(
         Number of dimensions the UMAP will have.
     random_state: int
         Random seed which can be used to get the same result twice
+
+    Returns:
+        pd.DataFrame: A new DataFrame containing the UMAP features and ground 
+        truth labels (if provided). If ground_truth_df is None, returns only 
+        the UMAP features.
     """
     index = dataframe.index
     data = _try_dropping(dataframe)
@@ -61,7 +65,6 @@ def umap_with_indices_and_ground_truth(
         return umap_df
     return pd.concat([umap_df,ground_truth_df[gt_keys]],axis=1).dropna()    
 
-# TODO docstring
 def PCA_with_indices_and_ground_truth(
     dataframe: pd.DataFrame,
     ground_truth_df: pd.DataFrame = None,
@@ -69,7 +72,35 @@ def PCA_with_indices_and_ground_truth(
     n_components=2,
     remove_unclassified = True,
 ):
-    
+    """
+    This function performs PCA on the input DataFrame and returns a new DataFrame 
+    with the specified number of components. If ground truth labels are provided, 
+    they will be included in the output DataFrame. The function also provides an 
+    option to remove unclassified samples from the input DataFrame and the ground 
+    truth DataFrame.
+
+    Parameters
+    ----------
+    dataframe: (pd.DataFrame)
+        The input DataFrame to perform PCA on.
+    ground_truth_df: pd.DataFrame, optional
+        A DataFrame containing the ground truth labels for the input DataFrame. 
+        Defaults to None.
+    gt_keys: list, optional
+        A list of strings representing the columns of ground_truth_df to include 
+        in the output. Defaults to ["Axes","Morph","Morph_Class"].
+    n_components: int, optional
+        The number of components to extract from the input DataFrame. 
+        Defaults to 2.
+    remove_unclassified: bool, optional
+        A boolean value indicating whether to remove unclassified samples from 
+        both the input DataFrame and the ground truth DataFrame. Defaults to True.
+
+    Returns:
+        pd.DataFrame: A new DataFrame containing the PCA components and ground 
+        truth labels (if provided). If ground_truth_df is None, returns only 
+        the PCA components DataFrame.
+    """
     if ground_truth_df is not None:
         if remove_unclassified:
             dataframe = dataframe.loc[(ground_truth_df["Morph"]!="unclassified")&(ground_truth_df["Axes"]!="unclassified")]

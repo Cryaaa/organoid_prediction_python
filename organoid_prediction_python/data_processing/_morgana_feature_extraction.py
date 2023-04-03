@@ -38,7 +38,7 @@ def calculate_morgana_shapes(
         reform_props(prop)
         props.append(prop)
 
-    empty_prop = {k:[np.nan] for k in props[0].keys()}
+    empty_prop = pd.Series({k:np.nan for k in props[0].keys()})
     for idx in empty_img_indices:
         props.insert(idx,empty_prop)
     df = pd.concat(props,axis=1)

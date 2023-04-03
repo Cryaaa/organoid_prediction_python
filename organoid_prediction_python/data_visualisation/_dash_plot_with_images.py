@@ -18,8 +18,31 @@ def get_dash_app_3D_scatter_hover_images(
     hue:str,
     images:np.ndarray
 ):
+    """
+    The get_dash_app_3D_scatter_hover_images() function creates a Dash app that displays a 3D 
+    scatter plot with hover information for each data point. The hover information consists of 
+    an image and a label associated with the data point. The image is retrieved from an array 
+    of images passed to the function.
+    
+    Parameters
+    ----------
+    dataframe: pd.DataFrame
+        A Pandas DataFrame containing the data to be plotted.
+    plot_keys: list 
+        A list of column names in the dataframe that represent the x, y, and z coordinates of 
+        the data points.
+    hue: str
+        A string representing the column name in the dataframe that contains the labels 
+        associated with the data points.
+    images: 
+        A numpy array containing the images to be displayed in the hover information.
 
-    # Helper functions
+    Returns:
+        app: a Dash app object representing the 3D scatter plot with hover information.
+    """
+
+    # Definition of a nested helper function np_image_to_base64 that converts numpy 
+    # arrays of images into base64 encoded strings for display in HTML.
     def np_image_to_base64(im_matrix):
         im = Image.fromarray(im_matrix)
         buffer = io.BytesIO()
@@ -28,13 +51,17 @@ def get_dash_app_3D_scatter_hover_images(
         im_url = "data:image/jpeg;base64, " + encoded_image
         return im_url
 
-    # Color for each digit
+    # Create a color map for each categorical value and assigns a color to each data 
+    # point based on its category. It then extracts the x, y, and z data from the 
+    # input DataFrame, and uses them to create a 3D scatter plot using the 
+    # plotly.graph_objects library.
     color_map = list(sns.color_palette("tab10").as_hex())
     labels = dataframe[hue].to_numpy()
     mapping = {value:integer for integer,value in enumerate(np.unique(labels))}
     colors = [color_map[mapping[label]] for label in labels]
     x,y,z = [dataframe[key].to_numpy() for key in plot_keys]
 
+    # Make the plot. 
     fig = go.Figure(data=[go.Scatter3d(
         x=x,
         y=y,
@@ -47,6 +74,9 @@ def get_dash_app_3D_scatter_hover_images(
         )
     )])
 
+    # The plot's hover information is set to "none" and its hover template is set 
+    # to None to prevent default hover information from being displayed. The plot's 
+    # layout is set to fixed dimensions of 1500x800 pixels.
     fig.update_traces(
         hoverinfo="none",
         hovertemplate=None,
@@ -57,6 +87,10 @@ def get_dash_app_3D_scatter_hover_images(
         width=1500,
         height=800,)
 
+
+    # Definition of a JupyterDash application and creates a layout 
+    # consisting of a dcc.Graph component for the 3D scatter plot and a dcc.Tooltip 
+    # component for the hover information.
     app = JupyterDash(__name__)
 
     app.layout = html.Div(
@@ -67,6 +101,12 @@ def get_dash_app_3D_scatter_hover_images(
         ],
     )
 
+    # Definition of a callback function that listens for hover events on the 3D scatter 
+    # plot and returns the appropriate hover information. When a data point is hovered 
+    # over, the callback extracts the point's index and image from the input images array, 
+    # converts the image to a base64 encoded string using the np_image_to_base64 helper 
+    # function, and returns a html.Div containing the image and the category label of 
+    # the hovered data point.
     @app.callback(
         Output("graph-tooltip-5", "show"),
         Output("graph-tooltip-5", "bbox"),
