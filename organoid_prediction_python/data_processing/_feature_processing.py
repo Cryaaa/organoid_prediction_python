@@ -155,7 +155,8 @@ def reform_cellprofiler_table(
         "ImageNumber","Metadata_FileLocation","Metadata_Frame",
         "Metadata_Series","Metadata_Channel",'AreaShape_NormalizedMoment_0_0', 
         'AreaShape_NormalizedMoment_0_1', 'AreaShape_NormalizedMoment_1_0',
-    ]
+    ],
+    spit_out = False,
 ) -> None:
     """
     
@@ -167,11 +168,15 @@ def reform_cellprofiler_table(
 
     mapper = {
         "Metadata_Plate":"Plate",
+        "Metadata_ID":"ID",
         "Metadata_Well":"ID",
-        "Metadata_Run":"Run"
+        "Metadata_Run":"Run",
     }
     dataframe.rename(columns=mapper,inplace=True)
     dataframe.drop(useless_keys,axis = 1 , inplace=True)
+
+    if spit_out:
+        return dataframe
 
 # TODO docstring or decide if to keep this
 def distance_series(

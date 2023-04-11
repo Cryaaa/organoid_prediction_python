@@ -46,3 +46,4 @@ def workflow_2D_organoids(
     mask = analysis(image,min_size_threshold)
     labels = sequentially_modifying_mask(mask,property_name,threshold)
     return labels
+

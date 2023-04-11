@@ -1,7 +1,7 @@
 import numpy as np
-from skimage.measure import regionprops
+from skimage.measure import regionprops,label
 
-def keep_label_closest_to_avg_size(mask, avg_size = 12000):
+def keep_label_closest_to_avg_size(mask, avg_size = 12000,label_mask=True):
     """
     This function takes in a binary mask image and returns the mask with only the label closest to the average size
     (in terms of area) of all the labels in the mask.
@@ -16,7 +16,8 @@ def keep_label_closest_to_avg_size(mask, avg_size = 12000):
     """
     if np.max(mask) ==0:
         return mask
-    
+    if label_mask:
+        mask = label(mask)
     areas=[]
     for prop in regionprops(mask):
         areas.append(prop["area"])
