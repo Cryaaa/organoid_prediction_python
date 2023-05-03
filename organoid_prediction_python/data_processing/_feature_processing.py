@@ -62,14 +62,23 @@ def differential_standard_scaling(
     columns_regular, 
     columns_by_index, 
     columns_unscaled,
+    columns_group_scaling,
     by_index_grouping = ["Run","Plate"],
+    
 ):
     from sklearn.preprocessing import StandardScaler
-    
+
+    def group_scaling(df):
+        matrix = df.to_numpy()
+        mean = np.nanmean(matrix)
+        stdd = np.nanstd(matrix)
+        return (matrix-mean)/stdd
+        
     df_no_scaling = dataframe[columns_unscaled]
     df_reg_scaling = dataframe[columns_regular]
     df_index_scaling = dataframe[columns_by_index]
-    
+    df_group_scaling = dataframe[columns_group_scaling]
+
     df_reg_scaling = pd.DataFrame(
         StandardScaler().fit_transform(df_reg_scaling), 
         columns=columns_regular,
@@ -81,7 +90,13 @@ def differential_standard_scaling(
         grouping_keys=by_index_grouping
     )
     
-    return pd.concat([df_no_scaling,df_reg_scaling,df_index_scaling],axis=1)
+    df_group_scaling = pd.DataFrame(
+        group_scaling(df_group_scaling),
+        columns=columns_group_scaling,
+        index=df_group_scaling.index
+    )
+
+    return pd.concat([df_no_scaling,df_reg_scaling,df_index_scaling,df_group_scaling],axis=1)
 
 def standardscale_per_plate(
     dataframe: pd.DataFrame, 
@@ -105,7 +120,7 @@ def standardscale_per_plate(
     transformed: pd.DataFrame =  grouped.transform(
             lambda x: (x - x.mean()) / x.std()
         )
-    transformed.dropna(axis=1,inplace = True)
+    transformed.dropna(axis=1,inplace = True, thresh=1)
 
     return transformed
 

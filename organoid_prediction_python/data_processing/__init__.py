@@ -4,10 +4,12 @@ from ._feature_processing import (
     standardscale_per_plate,
     reform_cellprofiler_table,
     fraction_measurement,
+    differential_standard_scaling,
 )
 from ._graph_distance_measurement import calculate_distance_matrix
 from ._dimension_reduction import umap_with_indices_and_ground_truth, PCA_with_indices_and_ground_truth
 from ._dataframe_utils import extract_sample_identifiers
+from ._brachyury_polarisation_measurement import measure_brachyury_polarisation
 
 from ._morgana_feature_extraction import calculate_morgana_shapes, compute_morphological_info_no_mesh, reform_props
 from ._feature_extraction_simple import (
