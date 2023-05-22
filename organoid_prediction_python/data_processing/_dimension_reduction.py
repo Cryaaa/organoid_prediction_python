@@ -2,8 +2,8 @@ import pandas as pd
 import numpy as np
 import umap
 from sklearn.preprocessing import StandardScaler
-from sklearn.decomposition import PCA
-from .._utils import _try_dropping
+from sklearn.decomposition import PCA, SparsePCA
+from .._utils import _try_dropping, heatmap_coloring_func
 
 def umap_with_indices_and_ground_truth(
     dataframe: pd.DataFrame,
@@ -64,13 +64,15 @@ def umap_with_indices_and_ground_truth(
     if ground_truth_df is None:
         return umap_df
     return pd.concat([umap_df,ground_truth_df[gt_keys]],axis=1).dropna()    
-
+   
 def PCA_with_indices_and_ground_truth(
     dataframe: pd.DataFrame,
     ground_truth_df: pd.DataFrame = None,
     gt_keys:list = ["Axes","Morph","Morph_Class"],
     n_components=2,
     remove_unclassified = True,
+    standardscale = False,
+    return_transformer = False
 ):
     """
     This function performs PCA on the input DataFrame and returns a new DataFrame 
@@ -110,7 +112,8 @@ def PCA_with_indices_and_ground_truth(
     
     index = dataframe.index
     data = _try_dropping(dataframe)
-
+    if standardscale:
+        data = StandardScaler().fit_transform(data)
     transformer = PCA(n_components=n_components,)
     embedding = transformer.fit_transform(data)
     pca_df = pd.DataFrame(
@@ -120,7 +123,59 @@ def PCA_with_indices_and_ground_truth(
     )
 
     if ground_truth_df is None:
+        if return_transformer:
+            return pca_df, transformer
         return pca_df
+    if return_transformer:
+        return pd.concat([pca_df,ground_truth_df[gt_keys]],axis=1).dropna(), transformer
     return pd.concat([pca_df,ground_truth_df[gt_keys]],axis=1).dropna()
 
+# TODO Docstring
+def sparse_PCA_with_indices_and_ground_truth(
+    dataframe: pd.DataFrame,
+    ground_truth_df: pd.DataFrame = None,
+    gt_keys:list = ["Axes","Morph","Morph_Class"],
+    n_components: int = 2,
+    remove_unclassified: bool = True,
+    standardscale: bool = False,
+    return_transformer: bool = False,
+    sparseness: float = 0.7,
+):
+    if ground_truth_df is not None:
+        if remove_unclassified:
+            dataframe = dataframe.loc[(ground_truth_df["Morph"]!="unclassified")&(ground_truth_df["Axes"]!="unclassified")]
+            ground_truth_df = ground_truth_df.loc[(ground_truth_df["Morph"]!="unclassified")&(ground_truth_df["Axes"]!="unclassified")]
+        
+
     
+    index = dataframe.index
+    data = _try_dropping(dataframe)
+    if standardscale:
+        data = StandardScaler().fit_transform(data)
+    transformer = SparsePCA(n_components=n_components,alpha=sparseness, n_jobs=4, max_iter=5000)
+    embedding = transformer.fit_transform(data)
+    pca_df = pd.DataFrame(
+        embedding,
+        index=index,
+        columns=[f"PC_{i+1}" for i in range(n_components)],
+    )
+
+    if ground_truth_df is None:
+        if return_transformer:
+            return pca_df, transformer
+        return pca_df
+    if return_transformer:
+        return pd.concat([pca_df,ground_truth_df[gt_keys]],axis=1).dropna(), transformer
+    return pd.concat([pca_df,ground_truth_df[gt_keys]],axis=1).dropna()
+
+# TODO Docstring
+def transformer_loading_dataframe(transformer,input_dataframe,n_components=2, loading_bounds = (-1,0,1)):
+    transformerloadings = pd.DataFrame(
+        transformer.components_.T, 
+        columns=[f'PC_{i+1}' for i in range(n_components)], 
+        index=input_dataframe.columns
+    )
+    out = transformerloadings.style.applymap(
+        heatmap_coloring_func,data_bounds = loading_bounds
+    )
+    return out

@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from .._utils import _try_dropping
 from scipy.spatial.distance import euclidean
+from sklearn.preprocessing import StandardScaler, RobustScaler
 
 def correlation_filter(dataframe:pd.DataFrame, threshold:float = 0.95) -> pd.DataFrame:
     """
@@ -66,7 +67,6 @@ def differential_standard_scaling(
     by_index_grouping = ["Run","Plate"],
     
 ):
-    from sklearn.preprocessing import StandardScaler
 
     def group_scaling(df):
         matrix = df.to_numpy()
@@ -119,6 +119,34 @@ def standardscale_per_plate(
     grouped = data.groupby(grouping_keys)
     transformed: pd.DataFrame =  grouped.transform(
             lambda x: (x - x.mean()) / x.std()
+        )
+    transformed.dropna(axis=1,inplace = True, thresh=1)
+
+    return transformed
+
+def percentile_scale_per_plate(
+    dataframe: pd.DataFrame,
+    percentile = 1, 
+    grouping_keys: list =["Run", "Plate"],
+) -> pd.DataFrame:
+    """
+    Function that performs standard-scaling / z-normalisation in subgroups like 
+    plates of samples. The grouping_keys specify the index levels which will be 
+    grouped before being z-normalised / standard-scaled. 
+
+    Parameters
+    ----------
+    dataframe: pd.DataFrame
+        Input DataFrame that will be processed. Must be a multi-index DataFrame
+    grouping_keys: list
+        list of strings that are part of the multiindex which will be used for
+        grouping
+    """
+    data = _try_dropping(dataframe)
+    grouped = data.groupby(grouping_keys)
+    scaler = RobustScaler(with_centering=False,quantile_range=(percentile,100-percentile))
+    transformed: pd.DataFrame =  grouped.transform(
+            lambda x: scaler.fit_transform(x.to_numpy().reshape(-1, 1)).reshape(1, -1)[0]
         )
     transformed.dropna(axis=1,inplace = True, thresh=1)
 
