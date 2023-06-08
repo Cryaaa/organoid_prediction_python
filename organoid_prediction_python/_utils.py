@@ -35,3 +35,7 @@ def heatmap_coloring_func(value,data_bounds = (-1,0,1)):
     cmap = colormaps["bwr"]
     hex_color = to_hex(cmap(np.interp(value,data_bounds,(0,0.5,1))))
     return f"background: {hex_color};"
+
+def natural_key(string_):
+    """See https://blog.codinghorror.com/sorting-for-humans-natural-sort-order/"""
+    return [int(s) if s.isdigit() else s for s in re.split(r'(\d+)', string_)]

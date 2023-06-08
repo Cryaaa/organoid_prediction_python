@@ -27,7 +27,9 @@ def extract_sample_identifiers(
     for filename in filenames:
         m = p.search(filename)
         name_frags = [f"{k}_{v}_" for k,v in m.groupdict().items()]
-        name = name_frags[0]+name_frags[1]+name_frags[2]
+        name = ""
+        for frag in name_frags:
+            name += frag
         name = name[:-1]
         raw_columns["Filename"].append(name)
         for  regex_name in regex_column_names:
