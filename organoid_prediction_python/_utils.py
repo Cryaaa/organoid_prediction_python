@@ -2,7 +2,7 @@ import pandas as pd
 from matplotlib import colormaps
 from matplotlib.colors import to_hex
 import numpy as np
-
+import re
 def _try_dropping(
     dataframe: pd.DataFrame,
     key_list:list=[

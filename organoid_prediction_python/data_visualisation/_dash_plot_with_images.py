@@ -8,7 +8,7 @@ import plotly.graph_objects as go
 
 from PIL import Image
 import numpy as np
-
+from matplotlib.colors import to_hex
 
 # code taken and modified from: https://dash.plotly.com/dash-core-components/tooltip?_gl=1*9tyg7p*_ga*NDYwMzcxMTAxLjE2Njk3MzgyODM.*_ga_6G7EE0JNSC*MTY3MzI2ODgyOS45LjEuMTY3MzI2OTA0Ni4wLjAuMA..
 # TODO put license here
@@ -16,7 +16,8 @@ def get_dash_app_3D_scatter_hover_images(
     dataframe:pd.DataFrame,
     plot_keys:list, 
     hue:str,
-    images:np.ndarray
+    images:np.ndarray,
+    additional_info: str = "",
 ):
     """
     The get_dash_app_3D_scatter_hover_images() function creates a Dash app that displays a 3D 
@@ -55,10 +56,23 @@ def get_dash_app_3D_scatter_hover_images(
     # point based on its category. It then extracts the x, y, and z data from the 
     # input DataFrame, and uses them to create a 3D scatter plot using the 
     # plotly.graph_objects library.
-    color_map = list(sns.color_palette("tab10").as_hex())
+
+    
     labels = dataframe[hue].to_numpy()
-    mapping = {value:integer for integer,value in enumerate(np.unique(labels))}
-    colors = [color_map[mapping[label]] for label in labels]
+    if labels.dtype.name == 'object':
+        color_map = list(sns.color_palette("tab10").as_hex())
+        mapping = {value:integer for integer,value in enumerate(np.unique(labels))}
+        colors = [color_map[mapping[label]] for label in labels]
+    else:
+        color_map = sns.color_palette("rocket",as_cmap=True)
+        scaled = np.array((labels - labels.min()) / (labels.max()-labels.min()))
+        colors = [to_hex(color_map(val)) for val in scaled]
+    
+    add_info = ["" for i in range(len(dataframe))]
+    if additional_info != "":
+        add_info = dataframe[additional_info].to_numpy()
+
+    
     x,y,z = [dataframe[key].to_numpy() for key in plot_keys]
 
     # Make the plot. 
@@ -129,7 +143,8 @@ def get_dash_app_3D_scatter_hover_images(
                 html.Img(
                     src=im_url, style={"width": "100%"},
                 ),
-                html.P(hue + ": " + str(labels[num]), style={'font-weight': 'bold'})
+                html.P(hue + ": " + str(labels[num]), style={'font-weight': 'bold'}),
+                html.P(additional_info + ": " + str(add_info[num]), style={'font-weight': 'bold'})
             ], style={'width': '200px', 'white-space': 'normal'})
         ]
 

@@ -4,8 +4,11 @@ from skimage.measure import regionprops
 def crop_image_or_mask_around_CM(image, mask, return_image = True, crop_height = 350, crop_width = 350):
     half_wid = int(crop_width/2)
     half_hgt = int(crop_height/2)
-    properties = regionprops(mask, image)
-    center_of_mass = (properties[0].centroid)
+    
+    center_of_mass = np.array(image.shape)/2
+    if mask.max() >0:
+        properties = regionprops(mask, image)
+        center_of_mass = (properties[0].centroid)
     c_0, c_1 = [int(c) for c in center_of_mass]
     if c_0-half_wid < 0:
         x_borders = np.amax(np.array([

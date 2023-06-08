@@ -9,3 +9,4 @@ from ._cropping import crop_image_or_mask_around_CM, crop_around_centroid
 from ._processing_masks import keep_label_closest_to_avg_size, keep_labels_closest_to_stack_median
 from ._morgana_image_straightening import straighten_mask_and_image
 from ._brachyury_segmentation import segment_bra,segment_brachyury_stack
+from ._image_visualisation import make_composite_image
