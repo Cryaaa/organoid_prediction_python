@@ -1,5 +1,6 @@
 import plotly.express as px
-from seaborn import color_palette
+from seaborn import color_palette, stripplot
+from matplotlib import colormaps, collections
 from pandas import DataFrame
 import numpy as np
 
@@ -51,3 +52,61 @@ def plotly3d(df:DataFrame, hue:str, xyz_columns:list,alpha = 0.7):
     fig.update_traces(marker=dict(size=5))
 
     fig.show()
+
+def raincloud_plot(df,x,y,ax,jitter = 0.3,palette = 'flare', quantiles = [0.25,0.75], size_cloud = 3, size_quant = 5):
+
+
+    cmap = colormaps[palette]
+    stripplot(
+        x = x, y = y, data = df, palette = palette,
+        size = size_cloud, jitter =jitter-0.05, zorder = 1,ax=ax,**{"alpha":0.7},
+    )
+    
+    data_manual_x = [df[df[x] == feat][y] for feat in df[x].unique()]
+    num_hues = len(df[x].unique())
+    positions_violin = np.arange(num_hues)-jitter
+    ax.plot(
+        positions_violin,
+        [data_manual_x[i].mean() for i in range(num_hues)],
+        c="white",
+        marker ="o",
+        zorder=3,
+        linewidth=0,
+        markersize=size_quant/2
+    )
+    
+    lines_quant = [
+        [
+            [positions_violin[i],data_manual_x[i].quantile(quantiles[0])],
+            [positions_violin[i],data_manual_x[i].quantile(quantiles[1])]
+        ] for i in range(num_hues)
+    ]
+
+    collection_quant=collections.LineCollection(
+        lines_quant,
+        linewidths = size_quant,
+        color=np.clip(
+            np.array([cmap(np.linspace(0,1,3)[i]) for i in range(num_hues)])-np.array([0.1,0.1,0.1,0])*3,
+            0,
+            1
+        ),
+        zorder=2,
+    )
+    collection_quant.set_capstyle("round")
+    ax.add_collection(collection_quant)
+    
+    vp = ax.violinplot(data_manual_x,positions=positions_violin, 
+               showmeans=False, showextrema=False, showmedians=False,vert=True
+    )
+    for idx, b in enumerate(vp['bodies']):
+        lim = idx - jitter
+        # Get the center of the plot
+        m = np.mean(b.get_paths()[0].vertices[:, 0])
+        
+        # Modify it so we only see the upper half of the violin plot
+        b.get_paths()[0].vertices[:, 0] = np.clip(b.get_paths()[0].vertices[:, 0], lim-1, lim)
+        
+        # Change to the desired color
+        b.set_color(cmap(np.linspace(0,1,3)[idx]))
+        b.set_alpha(0.6)
+        b.set_zorder(1)

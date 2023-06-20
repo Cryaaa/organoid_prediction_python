@@ -4,6 +4,7 @@ import umap
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA, SparsePCA
 from .._utils import _try_dropping, heatmap_coloring_func
+from functools import partial
 
 def umap_with_indices_and_ground_truth(
     dataframe: pd.DataFrame,
@@ -72,7 +73,8 @@ def PCA_with_indices_and_ground_truth(
     n_components=2,
     remove_unclassified = True,
     standardscale = False,
-    return_transformer = False
+    return_transformer = False,
+    randomstate = None,
 ):
     """
     This function performs PCA on the input DataFrame and returns a new DataFrame 
@@ -114,7 +116,7 @@ def PCA_with_indices_and_ground_truth(
     data = _try_dropping(dataframe)
     if standardscale:
         data = StandardScaler().fit_transform(data)
-    transformer = PCA(n_components=n_components,)
+    transformer = PCA(n_components=n_components,random_state=randomstate)
     embedding = transformer.fit_transform(data)
     pca_df = pd.DataFrame(
         embedding,
@@ -140,6 +142,7 @@ def sparse_PCA_with_indices_and_ground_truth(
     standardscale: bool = False,
     return_transformer: bool = False,
     sparseness: float = 0.7,
+    randomstate = None,
 ):
     if ground_truth_df is not None:
         if remove_unclassified:
@@ -152,7 +155,7 @@ def sparse_PCA_with_indices_and_ground_truth(
     data = _try_dropping(dataframe)
     if standardscale:
         data = StandardScaler().fit_transform(data)
-    transformer = SparsePCA(n_components=n_components,alpha=sparseness, n_jobs=4, max_iter=5000)
+    transformer = SparsePCA(n_components=n_components,alpha=sparseness, n_jobs=4, max_iter=5000,random_state=randomstate)
     embedding = transformer.fit_transform(data)
     pca_df = pd.DataFrame(
         embedding,
@@ -169,13 +172,13 @@ def sparse_PCA_with_indices_and_ground_truth(
     return pd.concat([pca_df,ground_truth_df[gt_keys]],axis=1).dropna()
 
 # TODO Docstring
-def transformer_loading_dataframe(transformer,input_dataframe,n_components=2, loading_bounds = (-1,0,1)):
+def transformer_loading_dataframe(transformer,input_dataframe,n_components=2, loading_bounds = (-1,0,1),cmap="vlag"):
     transformerloadings = pd.DataFrame(
         transformer.components_.T, 
         columns=[f'PC_{i+1}' for i in range(n_components)], 
         index=input_dataframe.columns
     )
     out = transformerloadings.style.applymap(
-        heatmap_coloring_func,data_bounds = loading_bounds
+        partial(heatmap_coloring_func,**{"cmap":cmap}),data_bounds = loading_bounds
     )
     return out

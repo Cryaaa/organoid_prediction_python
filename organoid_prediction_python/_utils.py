@@ -31,9 +31,9 @@ def display_hex_colors(hex_colors):
     display(df.style.apply(lambda x: apply_formatting(x, hex_colors)))
 
     
-def heatmap_coloring_func(value,data_bounds = (-1,0,1)):
-    cmap = colormaps["bwr"]
-    hex_color = to_hex(cmap(np.interp(value,data_bounds,(0,0.5,1))))
+def heatmap_coloring_func(value,data_bounds = (-1,0,1),cmap = "bwr"):
+    col_map = colormaps[cmap]
+    hex_color = to_hex(col_map(np.interp(value,data_bounds,(0,0.5,1))))
     return f"background: {hex_color};"
 
 def natural_key(string_):
