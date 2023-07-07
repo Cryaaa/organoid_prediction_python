@@ -15,7 +15,7 @@ from ._dimension_reduction import (
     sparse_PCA_with_indices_and_ground_truth,
     transformer_loading_dataframe
 )
-from ._dataframe_utils import extract_sample_identifiers
+from ._dataframe_utils import extract_sample_identifiers, stack_time_data
 
 from ._brachyury_polarisation_measurement import measure_brachyury_polarisation
 
