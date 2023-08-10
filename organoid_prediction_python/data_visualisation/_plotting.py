@@ -86,7 +86,7 @@ def raincloud_plot(df,x,y,ax,jitter = 0.3,palette = 'flare', quantiles = [0.25,0
         lines_quant,
         linewidths = size_quant,
         color=np.clip(
-            np.array([cmap(np.linspace(0,1,3)[i]) for i in range(num_hues)])-np.array([0.1,0.1,0.1,0])*3,
+            np.array([cmap(np.linspace(0,1,num_hues)[i]) for i in range(num_hues)])-np.array([0.1,0.1,0.1,0])*3,
             0,
             1
         ),
@@ -107,6 +107,6 @@ def raincloud_plot(df,x,y,ax,jitter = 0.3,palette = 'flare', quantiles = [0.25,0
         b.get_paths()[0].vertices[:, 0] = np.clip(b.get_paths()[0].vertices[:, 0], lim-1, lim)
         
         # Change to the desired color
-        b.set_color(cmap(np.linspace(0,1,3)[idx]))
+        b.set_color(cmap(np.linspace(0,1,num_hues)[idx]))
         b.set_alpha(0.6)
         b.set_zorder(1)
