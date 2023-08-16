@@ -140,12 +140,14 @@ def get_dash_app_3D_scatter_hover_images(
 
     return app
 
+#TODO Correct Docstring
 def get_dash_app_2D_scatter_hover_images(
     dataframe:pd.DataFrame,
     plot_keys:list, 
     hue:str,
     images:np.ndarray,
     additional_info: str = "",
+    image_size: int = 200,
 ):
     """
     The get_dash_app_3D_scatter_hover_images() function creates a Dash app that displays a 3D 
@@ -180,7 +182,7 @@ def get_dash_app_2D_scatter_hover_images(
         mapping = {value:integer for integer,value in enumerate(np.unique(labels))}
         colors = [color_map[mapping[label]] for label in labels]
     else:
-        color_map = sns.color_palette("rocket",as_cmap=True)
+        color_map = sns.color_palette("flare",as_cmap=True)
         scaled = np.array((labels - labels.min()) / (labels.max()-labels.min()))
         colors = [to_hex(color_map(val)) for val in scaled]
     
@@ -191,11 +193,11 @@ def get_dash_app_2D_scatter_hover_images(
     x,y = [dataframe[key].to_numpy() for key in plot_keys]
 
     # Make the plot. 
-    fig = go.Figure(data=[go.Scatter(
+    fig = go.Figure(   data=[go.Scatter(
         x=x,
         y=y,
         mode='markers',
-        opacity=0.7,
+        opacity=0.8,
         marker=dict(
             size=5,
             color=colors,
@@ -212,8 +214,8 @@ def get_dash_app_2D_scatter_hover_images(
 
     fig.update_layout(
         autosize=False,
-        width=1500,
-        height=800,)
+        width=1000,
+        height=1000,)
 
 
     # Definition of a JupyterDash application and creates a layout 
@@ -259,7 +261,7 @@ def get_dash_app_2D_scatter_hover_images(
                 ),
                 html.P(hue + ": " + str(labels[num]), style={'font-weight': 'bold'}),
                 html.P(additional_info + ": " + str(add_info[num]), style={'font-weight': 'bold'})
-            ], style={'width': '200px', 'white-space': 'normal'})
+            ], style={'width': f'{image_size}px', 'white-space': 'normal'})
         ]
 
         return True, bbox, children
