@@ -21,7 +21,7 @@ def simple_brightfield_regionprops(
         return out
     
     bf_props_table = regionprops_table(bf_mask,bf_image,properties=bf_prop_names)
-    bf_props_table["aspect_ratio"] = np.array([bf_props_table["axis_minor_length"][0]/bf_props_table["axis_major_length"][0]])
+    bf_props_table["aspect_ratio"] = np.array([bf_props_table["axis_major_length"][0]/bf_props_table["axis_minor_length"][0]])
 
     return bf_props_table
 
@@ -48,7 +48,7 @@ def simple_brachyury_regionprops(
             return np.std(intensities[region], ddof=1)
     
     bra_props_table = regionprops_table(bra_mask,bra_image,properties=bra_prop_names, extra_properties=[image_stdev])
-    bra_props_table["aspect_ratio"] = np.array([bra_props_table["axis_minor_length"][0]/bra_props_table["axis_major_length"][0]])
+    bra_props_table["aspect_ratio"] = np.array([bra_props_table["axis_major_length"][0]/bra_props_table["axis_minor_length"][0]])
     if bf_regionprops_table is not None:
         bra_props_table["area_fraction"] = np.array([bra_props_table["area"][0]/bf_regionprops_table["area"][0]])
 
