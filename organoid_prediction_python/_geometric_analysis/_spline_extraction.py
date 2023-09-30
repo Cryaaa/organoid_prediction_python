@@ -1,7 +1,15 @@
-from scipy import interpolate
-import numpy as np
+from scipy import interpolate, integrate
+from scipy.interpolate import interp1d
+from scipy.spatial import cKDTree
 from scipy.optimize import minimize
-from toska_functions import *
+from scipy.signal import savgol_filter
+from functools import partial
+from .toska_functions import *
+
+import vedo
+
+import numpy as np
+
 # TODO import from updated toska library, Credit Allyson
 
 # TODO Docstring
@@ -41,9 +49,7 @@ def extract_spine_coordinates(skeleton, return_edge_points=False):
     return coords_spine
 
 # TODO Docstring
-def fit_bspline_to_data(spline_point_list, start_coord, knots_count=3, spline_degree=2):
-    ordered_point_list = order_points_from_start(spline_point_list,start_coord)
-    
+def fit_bspline_to_data(ordered_point_list, knots_count=3, spline_degree=2, return_ticks = False):
     # Normalize the parameter t for the range [0, 1]
     t_normalized = np.linspace(0, 1, len(ordered_point_list))
     
@@ -56,13 +62,33 @@ def fit_bspline_to_data(spline_point_list, start_coord, knots_count=3, spline_de
     tck_z = interpolate.splrep(t_normalized, ordered_point_list[:, 0], t=knots, k=spline_degree)
     
     # Function to evaluate the B-spline for a given parameter t
-    def bspline_eval(t_param):
-        x = interpolate.splev(t_param, tck_x)
-        y = interpolate.splev(t_param, tck_y)
-        z = interpolate.splev(t_param, tck_z)
-        return z, y, x
-    
+    bspline_eval = make_bspline_from_ticks([tck_x,tck_y,tck_z])
+
+    if return_ticks:
+        return bspline_eval, [tck_x,tck_y,tck_z]
     return bspline_eval
+
+# TODO Docstring
+def make_bspline_from_ticks(ticks):
+    # Function to evaluate the B-spline for a given parameter t
+    return partial(
+        bspline_eval, 
+        **{
+            "tck_x":ticks[0], 
+            "tck_y":ticks[1], 
+            "tck_z":ticks[2]
+        }
+    )
+
+
+def bspline_eval(t_param,tck_x, tck_y, tck_z):
+    x = interpolate.splev(t_param, tck_x)
+    y = interpolate.splev(t_param, tck_y)
+    z = interpolate.splev(t_param, tck_z)
+    if is_list_like(t_param):
+        return np.array([z, y, x]).T
+    return np.array([z, y, x])
+
 
 # TODO Docstring
 def find_parametric_curve_mesh_intersects(mesh, parametric_curve_function, search_space = [-1,2]):
@@ -94,6 +120,153 @@ def find_parametric_curve_mesh_intersects(mesh, parametric_curve_function, searc
 
     return output
 
+# TODO Docstring
+def slice_mesh_along_curve(
+        mesh, 
+        curve_function, 
+        ticks, 
+        n_segments = 10, 
+        search_space = [-1,2]
+    ):
+    
+    intersect_obj = find_parametric_curve_mesh_intersects(mesh, curve_function,search_space)
+    
+    translation_func = create_translation_function(curve_function,ticks,intersect_obj.parameters)
+
+    planes = find_planes_along_parametric_curve(
+        curve_function,
+        n_segments+1,
+        translation_function=translation_func,
+    )
+    
+    slices = []
+    for i in range(len(planes)-1):
+        if i == 0:
+            slice = slice_mesh_with_planes(mesh,[planes[i+1]],normal_factors=[-1])
+        elif i == len(planes)-2:
+            slice = slice_mesh_with_planes(mesh,[planes[i]])
+        else:
+            slice = slice_mesh_with_planes(mesh, planes[i:i+2])
+        slices.append(slice)
+
+    return slices
+
+# TODO Docstring
+def find_planes_along_parametric_curve(
+        curve_function,
+        n_planes,
+        translation_function = None,
+        plane_size = (400,400)
+    ):
+    planes = []
+    
+    for t in np.linspace(0,1,n_planes):
+        if translation_function is not None:
+            t = translation_function(t)
+        
+        # Assuming curve_point and tangent_at_point are already defined
+        plane = vedo.Plane(
+            pos=curve_function(t), 
+            normal=curve_tangent(curve_function, t), 
+            s = plane_size
+        )
+        planes.append(plane)
+
+    return planes
+
+# TODO Docstring
+def slice_mesh_with_planes(mesh,planes, normal_factors = [1,-1]):
+    sliced = vedo.mesh.Mesh(mesh)
+
+    for plane, factor in zip(planes,normal_factors):
+        sliced.cut_with_plane(plane.pos(),plane.normal * factor)
+        sliced.fill_holes(size=10000)
+
+    print(f"Closed: {sliced.is_closed()}")
+
+    return sliced
+
+# TODO Docstring
+def create_translation_function(bspline_eval, ticks, curve_mesh_intersects, num_points=1000, inverse = False):
+    """
+    Create a function that maps [0, 1] to [t1, t2] such that even t values give 
+    evenly spaced points on the curve. t=0 maps to t1 and t=1 maps to t2.
+    """
+    t1, t2 = curve_mesh_intersects
+    # Sample t-values densely between t1 and t2
+    t_values_dense = np.linspace(t1, t2, num_points)
+    
+    # Compute arc lengths for each t-value from t1 to the current t-value
+    cum_arc_lengths = [compute_arc_length_between_points(ticks[0], ticks[1], ticks[2], t1, t) for t in t_values_dense]
+    
+    # Normalize arc lengths to [0, 1]
+    total_length = cum_arc_lengths[-1]
+    normalized_arc_lengths = np.array(cum_arc_lengths) / total_length
+    
+    if inverse:
+        # Interpolation function for the inverse (this will map [t1, t2] back to [0, 1])
+        inverse_translation_func = interp1d(t_values_dense, normalized_arc_lengths, kind='linear', fill_value="extrapolate")
+        return inverse_translation_func
+    
+    # Interpolation function (this will map [0, 1] to [t1, t2])
+    translation_func = interp1d(normalized_arc_lengths, t_values_dense, kind='linear', fill_value="extrapolate")
+    return translation_func 
+
+# TODO Docstring
+def smooth_resample_curve(points, window_length=61, poly_order=2):
+    """
+    Smooth and resample a curve using arc-length parameterization and Savitzky-Golay filter.
+    
+    Parameters:
+    - points: An array of shape (n, 3) representing the x, y, z coordinates.
+    - window_length: Window length for Savitzky-Golay filter.
+    - poly_order: Polynomial order for Savitzky-Golay filter.
+    
+    Returns:
+    - resampled_smoothed_points: An array of shape (n, 3) representing the smoothed x, y, z coordinates.
+    """
+    x, y, z = points[:, 0], points[:, 1], points[:, 2]
+    
+    # Compute the cumulative distance for parameterization
+    s = compute_cumulative_distance(x, y, z)
+    
+    # Interpolate the data using the cumulative distance as the parameter
+    interp_x = interp1d(s, x, kind='linear')
+    interp_y = interp1d(s, y, kind='linear')
+    interp_z = interp1d(s, z, kind='linear')
+    
+    # Resample the curve at regular intervals of s
+    s_resampled = np.linspace(s.min(), s.max(), len(s))
+    x_resampled = interp_x(s_resampled)
+    y_resampled = interp_y(s_resampled)
+    z_resampled = interp_z(s_resampled)
+    
+    # Applying Savitzky-Golay filter to the resampled data
+    z_resampled_smooth = savgol_filter(z_resampled, window_length, poly_order)
+    y_resampled_smooth = savgol_filter(y_resampled, window_length, poly_order)
+    x_resampled_smooth = savgol_filter(x_resampled, window_length, poly_order)
+    
+    return np.column_stack((x_resampled_smooth, y_resampled_smooth, z_resampled_smooth))
+
+# TODO Docstring
+def add_spline_end_points(ordered_spline_coordinates, surface_mesh, n_points=2, n_points_averaging=10):
+    start_points = make_intermediate_spline_end_points(ordered_spline_coordinates, surface_mesh, n_points, n_points_averaging, start = True)
+    end_points = make_intermediate_spline_end_points(ordered_spline_coordinates, surface_mesh, n_points, n_points_averaging, start = False)
+    
+    return np.concatenate((start_points,ordered_spline_coordinates,end_points),axis=0)
+
+# HELPER FUNCTIONS TODO Decide which ones can go into utils
+# ---------------------------------------------------------------------------------------------------------------------
+
+# TODO Docstring
+def curve_tangent(parametric_curve_function, t):
+    # Calculate the derivative of your curve function
+    # For now, I'll use a numerical approximation:
+    delta = 1e-5
+    tangent = (
+        np.array(parametric_curve_function(t + delta)) - np.array(parametric_curve_function(t))
+    ) / delta
+    return tangent / np.linalg.norm(tangent)  # Normalize the tangent
 
 # TODO Docstring
 def distance(point1, point2):
@@ -108,7 +281,7 @@ class ParamIntersections():
 # TODO Docstring
 def order_points_from_start(points, start_coord):
     # Find the index of the start coordinate
-    start_idx = np.where((points == start_coord).all(axis=1))[0][0]
+    start_idx = do_kdtree(points, [start_coord])[0]
     
     # Initialize with the start point
     ordered_points = [points[start_idx]]
@@ -129,3 +302,66 @@ def order_points_from_start(points, start_coord):
     
     return np.array(ordered_points)
 
+# TODO Docstring, maybe move somewhere else
+def is_list_like(obj):
+    return np.iterable(obj) and not isinstance(obj, (str, bytes))
+
+# TODO Docstring
+def do_kdtree(coordinates,point_list):
+    mytree = cKDTree(coordinates)
+    dist, indexes = mytree.query(point_list)
+    return indexes
+
+# TODO Docstring
+def compute_cumulative_distance(x, y, z):
+    """Compute the cumulative distance along a curve defined by x, y, z coordinates."""
+    distances = np.sqrt(np.diff(x)**2 + np.diff(y)**2 + np.diff(z)**2)
+    return np.insert(np.cumsum(distances), 0, 0)
+
+# TODO Docstring
+def compute_arc_length_between_points(tck_x, tck_y, tck_z, t_start, t_end):
+    """Compute the arc length of a B-spline between two parameter values."""
+    
+    # Compute the derivative of the B-spline
+    def derivative(t):
+        dx = interpolate.splev(t, tck_x, der=1)
+        dy = interpolate.splev(t, tck_y, der=1)
+        dz = interpolate.splev(t, tck_z, der=1)
+        return np.array([dx, dy, dz])
+    
+    # Compute the speed (magnitude of the derivative) of the B-spline
+    def speed(t):
+        deriv = derivative(t)
+        return np.sqrt(np.sum(deriv**2))
+    
+    # Integrate the speed between t_start and t_end to get the arc length
+    arc_length, _ = integrate.quad(speed, t_start, t_end)
+    return arc_length
+
+# TODO Docstring
+def make_norm_vector(point1, point2):
+    vector = point2 - point1
+    return vector / np.linalg.norm(vector)
+
+# TODO Docstring
+def make_intermediate_spline_end_points(ordered_spline_coordinates, surface_mesh, n_points=2, n_points_averaging=10, start = True):
+    point1 = ordered_spline_coordinates[0]
+    point2 = np.mean(ordered_spline_coordinates[1:n_points_averaging+1], axis=0)
+    if not start:
+        point1 = ordered_spline_coordinates[-1]
+        point2 = np.mean(
+            ordered_spline_coordinates[len(ordered_spline_coordinates)-n_points_averaging-1:-1], 
+            axis=0
+        )
+    
+    vector = make_norm_vector(point2,point1)
+    intersect = surface_mesh.intersect_with_line(point1,point1 + vector*1000)
+    
+    distance = np.linalg.norm(point1-intersect)
+    print(distance)
+    
+    points = []
+    for i in range(n_points):
+        points.append(point1 + vector*(i+1)*(distance/ (n_points+1)))
+    print(points)    
+    return points
