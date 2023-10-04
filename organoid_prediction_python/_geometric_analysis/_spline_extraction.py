@@ -5,12 +5,19 @@ from scipy.optimize import minimize
 from scipy.signal import savgol_filter
 from functools import partial
 from .toska_functions import *
-
-import vedo
-
 import numpy as np
+import napari_process_points_and_surfaces as nppas
+import vedo
+from scipy.optimize import minimize, differential_evolution
+from functools import partial
+import concurrent.futures as cf
+import time
+from tqdm import tqdm
 
 # TODO import from updated toska library, Credit Allyson
+
+# DETERMINING SPLINE FUNCTIONS
+#---------------------------------------------------------------------------------------------------------------
 
 # TODO Docstring
 def extract_spine_coordinates(skeleton, return_edge_points=False):
@@ -121,72 +128,6 @@ def find_parametric_curve_mesh_intersects(mesh, parametric_curve_function, searc
     return output
 
 # TODO Docstring
-def slice_mesh_along_curve(
-        mesh, 
-        curve_function, 
-        ticks, 
-        n_segments = 10, 
-        search_space = [-1,2]
-    ):
-    
-    intersect_obj = find_parametric_curve_mesh_intersects(mesh, curve_function,search_space)
-    
-    translation_func = create_translation_function(curve_function,ticks,intersect_obj.parameters)
-
-    planes = find_planes_along_parametric_curve(
-        curve_function,
-        n_segments+1,
-        translation_function=translation_func,
-    )
-    
-    slices = []
-    for i in range(len(planes)-1):
-        if i == 0:
-            slice = slice_mesh_with_planes(mesh,[planes[i+1]],normal_factors=[-1])
-        elif i == len(planes)-2:
-            slice = slice_mesh_with_planes(mesh,[planes[i]])
-        else:
-            slice = slice_mesh_with_planes(mesh, planes[i:i+2])
-        slices.append(slice)
-
-    return slices
-
-# TODO Docstring
-def find_planes_along_parametric_curve(
-        curve_function,
-        n_planes,
-        translation_function = None,
-        plane_size = (400,400)
-    ):
-    planes = []
-    
-    for t in np.linspace(0,1,n_planes):
-        if translation_function is not None:
-            t = translation_function(t)
-        
-        # Assuming curve_point and tangent_at_point are already defined
-        plane = vedo.Plane(
-            pos=curve_function(t), 
-            normal=curve_tangent(curve_function, t), 
-            s = plane_size
-        )
-        planes.append(plane)
-
-    return planes
-
-# TODO Docstring
-def slice_mesh_with_planes(mesh,planes, normal_factors = [1,-1]):
-    sliced = vedo.mesh.Mesh(mesh)
-
-    for plane, factor in zip(planes,normal_factors):
-        sliced.cut_with_plane(plane.pos(),plane.normal * factor)
-        sliced.fill_holes(size=10000)
-
-    print(f"Closed: {sliced.is_closed()}")
-
-    return sliced
-
-# TODO Docstring
 def create_translation_function(bspline_eval, ticks, curve_mesh_intersects, num_points=1000, inverse = False):
     """
     Create a function that maps [0, 1] to [t1, t2] such that even t values give 
@@ -254,6 +195,104 @@ def add_spline_end_points(ordered_spline_coordinates, surface_mesh, n_points=2, 
     end_points = make_intermediate_spline_end_points(ordered_spline_coordinates, surface_mesh, n_points, n_points_averaging, start = False)
     
     return np.concatenate((start_points,ordered_spline_coordinates,end_points),axis=0)
+
+# PROCESSING WITH CURVE
+# --------------------------------------------------------------------------------------------
+
+# TODO Docstring
+def slice_mesh_along_curve(
+        mesh, 
+        curve_function, 
+        ticks, 
+        n_segments = 10, 
+        search_space = [-1,2]
+    ):
+    
+    intersect_obj = find_parametric_curve_mesh_intersects(mesh, curve_function,search_space)
+    
+    translation_func = create_translation_function(curve_function,ticks,intersect_obj.parameters)
+
+    planes = find_planes_along_parametric_curve(
+        curve_function,
+        n_segments+1,
+        translation_function=translation_func,
+    )
+    
+    slices = []
+    for i in range(len(planes)-1):
+        if i == 0:
+            slice = slice_mesh_with_planes(mesh,[planes[i+1]],normal_factors=[-1])
+        elif i == len(planes)-2:
+            slice = slice_mesh_with_planes(mesh,[planes[i]])
+        else:
+            slice = slice_mesh_with_planes(mesh, planes[i:i+2])
+        slices.append(slice)
+
+    return slices
+
+# TODO Docstring
+def find_planes_along_parametric_curve(
+        curve_function,
+        n_planes,
+        translation_function = None,
+        plane_size = (400,400)
+    ):
+    planes = []
+    
+    for t in np.linspace(0,1,n_planes):
+        if translation_function is not None:
+            t = translation_function(t)
+        
+        # Assuming curve_point and tangent_at_point are already defined
+        plane = vedo.Plane(
+            pos=curve_function(t), 
+            normal=curve_tangent(curve_function, t), 
+            s = plane_size
+        )
+        planes.append(plane)
+
+    return planes
+
+# TODO Docstring
+def slice_mesh_with_planes(mesh,planes, normal_factors = [1,-1]):
+    sliced = vedo.mesh.Mesh(mesh)
+
+    for plane, factor in zip(planes,normal_factors):
+        sliced.cut_with_plane(plane.pos(),plane.normal * factor)
+        sliced.fill_holes(size=10000)
+
+    print(f"Closed: {sliced.is_closed()}")
+
+    return sliced
+
+# TODO Docstring
+def measure_normalised_distances(coordinates,curve_ticks,intersect_paramameters,surface_mesh):
+    curve_function = make_bspline_from_ticks(curve_ticks)
+    inverse_translation_func = create_translation_function(curve_function,curve_ticks, intersect_paramameters, inverse=True)
+    array_1, array_2 = nppas.to_napari_surface_data(surface_mesh)
+
+    start = time.perf_counter()
+
+    numbers_tqdm = tqdm(coordinates)
+    # Initialize pool and run computations, collecting results in a list
+    results = []
+    with cf.ProcessPoolExecutor() as pool:
+        results = pool.map(
+            partial(
+                measure_normalised_point_distances,
+                **{"array1":array_1,
+                   "array2":array_2,
+                   "curve_function":curve_function,
+                   "search_space":intersect_paramameters,
+                   "parameter_translation_func":inverse_translation_func}
+            ),
+            numbers_tqdm
+        )
+    result_grabbed = [res for res in results]
+    end = time.perf_counter()
+    print(f"processing took {int((end-start)/60)} min, {(end-start)%60} s")
+
+    return np.array(result_grabbed)
 
 # HELPER FUNCTIONS TODO Decide which ones can go into utils
 # ---------------------------------------------------------------------------------------------------------------------
@@ -365,3 +404,67 @@ def make_intermediate_spline_end_points(ordered_spline_coordinates, surface_mesh
         points.append(point1 + vector*(i+1)*(distance/ (n_points+1)))
     print(points)    
     return points
+
+#TODO DOcstring
+def curve_distance(t, P, C):
+    return np.linalg.norm(C(t) - P)
+
+# Distance to surface as objective function
+# TODO Docstring
+def surface_distance(t, P, C, surface_mesh: vedo.mesh.Mesh):
+    # Note: Update this function to compute the distance to the surface along vector V
+    V = P - C(t)
+    #print(np.squeeze(C(t)),np.squeeze(C(t) + V*1000))
+    surface_intersect = surface_mesh.intersect_with_line(np.squeeze(C(t)),np.squeeze(C(t) + V*1000000))
+    #print(f"intersect: {surface_intersect}")
+    if len (surface_intersect) > 1:
+        #print("possibly problematic")
+        lengths = [np.linalg.norm(inters - C(t)) for inters in surface_intersect]
+        surface_intersect = surface_intersect[np.argmin(lengths)]
+    
+    dist_surf = np.linalg.norm(P - np.squeeze(surface_intersect))
+    
+    return dist_surf
+
+# TODO Docstring
+def combined_distance(t,P,C,surface_mesh,w1 = 0.5, w2 = 0.5):
+    return w1 *curve_distance(t, P, C) + w2 * surface_distance(t, P, C, surface_mesh)
+
+# TODO Docstring
+def find_projected_point_combined(curve_func, point, surface_mesh, bounds): 
+    result = differential_evolution(combined_distance, [bounds], args=(point, curve_func, surface_mesh))
+    return result.x[0]
+
+# TODO Docstring
+def measure_normalised_point_distances(
+    point,
+    array1,
+    array2,
+    curve_function,
+    search_space,
+    parameter_translation_func = None,
+    line_length = 1000000
+):
+    complex_obj = nppas.to_vedo_mesh((array1,array2))
+    curve_parameter = find_projected_point_combined(curve_function,point,complex_obj,search_space)
+    projected_point = np.squeeze(np.array(curve_function(curve_parameter)))
+    
+    curve_surf_vector = point - projected_point
+    curve_surf_vector = curve_surf_vector / np.linalg.norm(curve_surf_vector)
+
+    surface_intersect = complex_obj.intersect_with_line(projected_point,projected_point + curve_surf_vector*line_length)
+    if len (surface_intersect) > 1:
+        lengths = [np.linalg.norm(inters - projected_point) for inters in surface_intersect]
+        surface_intersect = surface_intersect[np.argmin(lengths)]
+    surface_intersect = np.squeeze(surface_intersect)
+    
+    dist_point = np.linalg.norm(projected_point - point)
+    dist_surf = np.linalg.norm(projected_point - surface_intersect)
+
+    normalised_dist = dist_point/dist_surf
+    
+    ap_dist = curve_parameter
+    if parameter_translation_func is not None:
+        ap_dist = parameter_translation_func(curve_parameter)
+    
+    return ap_dist, normalised_dist    
