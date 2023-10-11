@@ -205,12 +205,14 @@ def slice_mesh_along_curve(
         curve_function, 
         ticks, 
         n_segments = 10, 
-        search_space = [-1,2]
+        search_space = [-1,2],
+        translation_func = None
     ):
     
     intersect_obj = find_parametric_curve_mesh_intersects(mesh, curve_function,search_space)
     
-    translation_func = create_translation_function(curve_function,ticks,intersect_obj.parameters)
+    if translation_func is None:
+        translation_func = create_translation_function(curve_function,ticks,intersect_obj.parameters)
 
     planes = find_planes_along_parametric_curve(
         curve_function,
@@ -279,7 +281,7 @@ def measure_normalised_distances(coordinates,curve_ticks,intersect_paramameters,
     with cf.ProcessPoolExecutor() as pool:
         results = pool.map(
             partial(
-                measure_normalised_point_distances,
+                measure_normalised_point_distance,
                 **{"array1":array_1,
                    "array2":array_2,
                    "curve_function":curve_function,
@@ -412,13 +414,21 @@ def curve_distance(t, P, C):
 # Distance to surface as objective function
 # TODO Docstring
 def surface_distance(t, P, C, surface_mesh: vedo.mesh.Mesh):
+    
     # Note: Update this function to compute the distance to the surface along vector V
     V = P - C(t)
     #print(np.squeeze(C(t)),np.squeeze(C(t) + V*1000))
     surface_intersect = surface_mesh.intersect_with_line(np.squeeze(C(t)),np.squeeze(C(t) + V*1000000))
-    #print(f"intersect: {surface_intersect}")
+    
+    # This takes care of the case that for the given point no surface intersect exists
+    if len(np.squeeze(surface_intersect)) == 0:
+        return np.inf
+
+    surface_intersect = surface_mesh.intersect_with_line(np.squeeze(C(t)),np.squeeze(C(t) + V*1000000))
+    
+    # This takes care of the case when we have multiple intersects
     if len (surface_intersect) > 1:
-        #print("possibly problematic")
+        
         lengths = [np.linalg.norm(inters - C(t)) for inters in surface_intersect]
         surface_intersect = surface_intersect[np.argmin(lengths)]
     
@@ -436,7 +446,7 @@ def find_projected_point_combined(curve_func, point, surface_mesh, bounds):
     return result.x[0]
 
 # TODO Docstring
-def measure_normalised_point_distances(
+def measure_normalised_point_distance(
     point,
     array1,
     array2,
@@ -468,3 +478,9 @@ def measure_normalised_point_distances(
         ap_dist = parameter_translation_func(curve_parameter)
     
     return ap_dist, normalised_dist    
+
+
+#tipps simon: distances vorprogrammieren (not python)
+# weirdes coordinatensystem auf der surface womit man nur noch distance zur surface brauch
+# bounds einschraenken mit volume slices
+
