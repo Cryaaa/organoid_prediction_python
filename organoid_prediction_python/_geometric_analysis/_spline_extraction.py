@@ -428,23 +428,58 @@ def surface_distance(t, P, C, surface_mesh: vedo.mesh.Mesh):
     elif len (surface_intersect) > 1:
         #print("possibly problematic")
         lengths = np.array([np.linalg.norm(inters - C(t)) for inters in surface_intersect])
+        
+        # Find the intersection closest to the curve
+        surface_intersect = surface_intersect[np.argmin(lengths)]
+
+    dist_surf = np.linalg.norm(P - np.squeeze(surface_intersect))
+    
+    # handles the case that our intersect is closer to curve than our point
+    # if curve_distance(t,surface_intersect,C) < curve_distance(t,P,C):
+    #    return np.inf
+    
+    return dist_surf
+
+# TODO decide if needed. This function can handle the case that there are two surface intersects
+# and it will ignore the one which is closer to the curve than the point of interest
+def surface_distance_more_complex(t, P, C, surface_mesh: vedo.mesh.Mesh):
+    # Note: Update this function to compute the distance to the surface along vector V
+    V = P - C(t)
+    #print(np.squeeze(C(t)),np.squeeze(C(t) + V*1000))
+    surface_intersect = surface_mesh.intersect_with_line(np.squeeze(C(t)),np.squeeze(C(t) + V*1000000))
+    #print(f"intersect: {surface_intersect}")
+
+    # This takes care of the case that for the given point no surface intersect exists
+    if len(np.squeeze(surface_intersect)) == 0:
+        return np.inf
+    
+    # This takes care of the case when we have multiple intersects
+    elif len (surface_intersect) > 1:
+        #print("possibly problematic")
+        lengths = np.array([np.linalg.norm(inters - C(t)) for inters in surface_intersect])
+
+        lengths_to_curve = np.array([curve_distance(t,inters,C) for inters in surface_intersect])
 
         # Remove any intersections that are closer to the curve than our point of interest
-        surface_intersect_no_impossible = np.array(surface_intersect)[lengths>curve_distance(t,P,C)]
+        surface_intersect_no_impossible = np.array(surface_intersect)[lengths_to_curve>curve_distance(t,P,C)]
 
         # If we removed the only intersection this cannot be the point we are looking for
         if len(np.squeeze(surface_intersect_no_impossible)):
             return np.inf
         
         # Find the intersection closest to the curve but not closer than our point
-        surface_intersect = surface_intersect_no_impossible[np.argmin(lengths[lengths>curve_distance(t,P,C)])]
+        surface_intersect = surface_intersect_no_impossible[
+            np.argmin(lengths[lengths_to_curve>curve_distance(t,P,C)])
+        ]
 
     dist_surf = np.linalg.norm(P - np.squeeze(surface_intersect))
     
-    if dist_surf < curve_distance(t,P,C):
+    # handles the case that our intersect is closer to curve than our point
+    if curve_distance(t,surface_intersect,C) < curve_distance(t,P,C):
         return np.inf
     
     return dist_surf
+
 
 # TODO Docstring
 def combined_distance(t,P,C,surface_mesh,w1 = 0.5, w2 = 0.5):
