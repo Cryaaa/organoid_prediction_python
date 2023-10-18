@@ -132,7 +132,6 @@ def PCA_with_indices_and_ground_truth(
         return pd.concat([pca_df,ground_truth_df[gt_keys]],axis=1).dropna(), transformer
     return pd.concat([pca_df,ground_truth_df[gt_keys]],axis=1).dropna()
 
-# TODO Docstring
 def sparse_PCA_with_indices_and_ground_truth(
     dataframe: pd.DataFrame,
     ground_truth_df: pd.DataFrame = None,
@@ -144,13 +143,47 @@ def sparse_PCA_with_indices_and_ground_truth(
     sparseness: float = 0.7,
     randomstate = None,
 ):
+    """
+    Perform sparse PCA on the input DataFrame, with optional ground truth labels.
+    
+    Parameters
+    ----------
+    dataframe: pd.DataFrame
+        The input DataFrame to perform PCA on.
+    ground_truth_df: pd.DataFrame, optional
+        A DataFrame containing the ground truth labels for the input DataFrame. 
+        Defaults to None.
+    gt_keys: list, optional
+        A list of strings representing the columns of ground_truth_df to include 
+        in the output. Defaults to ["Axes","Morph","Morph_Class"].
+    n_components: int, optional
+        The number of components to extract from the input DataFrame. 
+        Defaults to 2.
+    remove_unclassified: bool, optional
+        A boolean value indicating whether to remove unclassified samples from 
+        both the input DataFrame and the ground truth DataFrame. Defaults to True.
+    standardscale: bool, optional
+        A boolean value indicating whether to standard scale the input DataFrame. 
+        Defaults to False.
+    return_transformer: bool, optional
+        A boolean value indicating whether to return the transformer object. 
+        Defaults to False.
+    sparseness: float, optional
+        The sparseness parameter for the SparsePCA algorithm. Defaults to 0.7.
+    randomstate: int, optional
+        The random state for the SparsePCA algorithm. Defaults to None.
+    
+    Returns
+    -------
+    pd.DataFrame
+        A new DataFrame containing the PCA components and ground truth labels (if provided). 
+        If ground_truth_df is None, returns only the PCA components DataFrame.
+    """
     if ground_truth_df is not None:
         if remove_unclassified:
             dataframe = dataframe.loc[(ground_truth_df["Morph"]!="unclassified")&(ground_truth_df["Axes"]!="unclassified")]
             ground_truth_df = ground_truth_df.loc[(ground_truth_df["Morph"]!="unclassified")&(ground_truth_df["Axes"]!="unclassified")]
         
-
-    
     index = dataframe.index
     data = _try_dropping(dataframe)
     if standardscale:
@@ -171,8 +204,30 @@ def sparse_PCA_with_indices_and_ground_truth(
         return pd.concat([pca_df,ground_truth_df[gt_keys]],axis=1).dropna(), transformer
     return pd.concat([pca_df,ground_truth_df[gt_keys]],axis=1).dropna()
 
-# TODO Docstring
+
 def transformer_loading_dataframe(transformer,input_dataframe,n_components=2, loading_bounds = (-1,0,1),cmap="vlag"):
+    """
+    Generate a heatmap of the loading values of the input_dataframe onto the transformer components.
+    
+    Parameters
+    ----------
+    transformer: sklearn.decomposition.SparsePCA
+        The transformer object.
+    input_dataframe: pd.DataFrame
+        The input DataFrame.
+    n_components: int, optional
+        The number of components to extract from the input DataFrame. 
+        Defaults to 2.
+    loading_bounds: tuple of floats, optional
+        The bounds for the heatmap. Defaults to (-1,0,1).
+    cmap: str, optional
+        The colormap to use. Defaults to "vlag".
+    
+    Returns
+    -------
+    pd.DataFrame
+        The styled DataFrame.
+    """
     transformerloadings = pd.DataFrame(
         transformer.components_.T, 
         columns=[f'PC_{i+1}' for i in range(n_components)], 

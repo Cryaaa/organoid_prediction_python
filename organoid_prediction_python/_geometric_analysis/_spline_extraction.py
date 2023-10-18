@@ -19,8 +19,18 @@ from tqdm import tqdm
 # DETERMINING SPLINE FUNCTIONS
 #---------------------------------------------------------------------------------------------------------------
 
-# TODO Docstring
 def extract_spine_coordinates(skeleton, return_edge_points=False):
+    """
+    This function extracts the coordinates of the spine from a given skeleton.
+
+    Parameters:
+    skeleton (numpy array): The 3D skeleton from which to extract the spine coordinates.
+    return_edge_points (bool, optional): If True, the function will also return the coordinates of the edge points of the spine. Default is False.
+
+    Returns:
+    coords_spine (numpy array): The coordinates of the spine.
+    spine_edge_points (numpy array, optional): The coordinates of the edge points of the spine. Only returned if return_edge_points is True.
+    """
     # Extract initial spine data from the skeleton
     coords, e_pts, b_pts, brnch, brnch_ids, brnch_lengths = n26_parse_skel_3d(skeleton.astype(bool), 0, 1, 2)
     
@@ -57,6 +67,19 @@ def extract_spine_coordinates(skeleton, return_edge_points=False):
 
 # TODO Docstring
 def fit_bspline_to_data(ordered_point_list, knots_count=3, spline_degree=2, return_ticks = False):
+    """
+    Fits a quadratic B-spline to an ordered list of points.
+
+    Parameters:
+    ordered_point_list (numpy array): The ordered list of points to fit the B-spline to.
+    knots_count (int, optional): The number of knots to use for the B-spline. Default is 3.
+    spline_degree (int, optional): The degree of the B-spline. Default is 2.
+    return_ticks (bool, optional): If True, the function will also return the knots of the B-spline. Default is False.
+
+    Returns:
+    bspline_eval (function): A function that evaluates the B-spline for a given parameter t.
+    ticks (list, optional): The knots of the B-spline. Only returned if return_ticks is True.
+    """
     # Normalize the parameter t for the range [0, 1]
     t_normalized = np.linspace(0, 1, len(ordered_point_list))
     
@@ -75,9 +98,17 @@ def fit_bspline_to_data(ordered_point_list, knots_count=3, spline_degree=2, retu
         return bspline_eval, [tck_x,tck_y,tck_z]
     return bspline_eval
 
-# TODO Docstring
+
 def make_bspline_from_ticks(ticks):
-    # Function to evaluate the B-spline for a given parameter t
+    """
+    Create a B-spline function from the given ticks.
+
+    Parameters:
+    - ticks: A list of three tuples, each containing the knots, coefficients, and degree of the B-spline in the x, y, and z directions, respectively.
+
+    Returns:
+    - A partial function that evaluates the B-spline for a given parameter t.
+    """
     return partial(
         bspline_eval, 
         **{
@@ -89,6 +120,18 @@ def make_bspline_from_ticks(ticks):
 
 
 def bspline_eval(t_param,tck_x, tck_y, tck_z):
+    """
+    Evaluate the B-spline for a given parameter t.
+
+    Parameters:
+    - t_param: The parameter t at which to evaluate the B-spline.
+    - tck_x: A tuple containing the knots, coefficients, and degree of the B-spline in the x direction.
+    - tck_y: A tuple containing the knots, coefficients, and degree of the B-spline in the y direction.
+    - tck_z: A tuple containing the knots, coefficients, and degree of the B-spline in the z direction.
+
+    Returns:
+    - An array of shape (3,) representing the x, y, and z coordinates of the point on the B-spline at parameter t.
+    """
     x = interpolate.splev(t_param, tck_x)
     y = interpolate.splev(t_param, tck_y)
     z = interpolate.splev(t_param, tck_z)
@@ -97,8 +140,18 @@ def bspline_eval(t_param,tck_x, tck_y, tck_z):
     return np.array([z, y, x])
 
 
-# TODO Docstring
 def find_parametric_curve_mesh_intersects(mesh, parametric_curve_function, search_space = [-1,2]):
+    """
+    Find the intersections between a parametric curve and a mesh.
+
+    Parameters:
+    - mesh: The mesh to intersect with the parametric curve.
+    - parametric_curve_function: A function that takes a parameter t and returns an array of shape (3,) representing the x, y, and z coordinates of the point on the curve at parameter t.
+    - search_space: A list containing the start and end points of the search space for the parameter t.
+
+    Returns:
+    - A ParamIntersections object containing the coordinates and parameters of the intersections between the curve and the mesh.
+    """
     # Define search space
     space = np.linspace(search_space[0], search_space[1], 1000)
     intersects = []
@@ -107,7 +160,7 @@ def find_parametric_curve_mesh_intersects(mesh, parametric_curve_function, searc
     for t in range(len(space)-1):
         point1 = parametric_curve_function(space[t])
         point2 = parametric_curve_function(space[t+1])
-        
+
         # Check if point is inside mesh
         intersect = mesh.intersect_with_line(point1,point2)
         if len(intersect)!= 0:
@@ -127,61 +180,70 @@ def find_parametric_curve_mesh_intersects(mesh, parametric_curve_function, searc
 
     return output
 
-# TODO Docstring
+
 def create_translation_function(bspline_eval, ticks, curve_mesh_intersects, num_points=1000, inverse = False):
     """
-    Create a function that maps [0, 1] to [t1, t2] such that even t values give 
-    evenly spaced points on the curve. t=0 maps to t1 and t=1 maps to t2.
+    Create a function that maps [0, 1] to [t1, t2] such that even t values give evenly spaced points on the curve. t=0 maps to t1 and t=1 maps to t2.
+
+    Parameters:
+    - bspline_eval: A function that takes a parameter t and returns an array of shape (3,) representing the x, y, and z coordinates of the point on the B-spline at parameter t.
+    - ticks: A list of three tuples, each containing the knots, coefficients, and degree of the B-spline in the x, y, and z directions, respectively.
+    - curve_mesh_intersects: A ParamIntersections object containing the coordinates and parameters of the intersections between the curve and the mesh.
+    - num_points: The number of points to sample densely between t1 and t2.
+    - inverse: Whether to create a function that maps [t1, t2] back to [0, 1] instead of [0, 1] to [t1, t2].
+
+    Returns:
+    - A function that maps [0, 1] to [t1, t2] or [t1, t2] to [0, 1], depending on the value of inverse.
     """
     t1, t2 = curve_mesh_intersects
     # Sample t-values densely between t1 and t2
     t_values_dense = np.linspace(t1, t2, num_points)
-    
+
     # Compute arc lengths for each t-value from t1 to the current t-value
     cum_arc_lengths = [compute_arc_length_between_points(ticks[0], ticks[1], ticks[2], t1, t) for t in t_values_dense]
-    
+
     # Normalize arc lengths to [0, 1]
     total_length = cum_arc_lengths[-1]
     normalized_arc_lengths = np.array(cum_arc_lengths) / total_length
-    
+
     if inverse:
         # Interpolation function for the inverse (this will map [t1, t2] back to [0, 1])
         inverse_translation_func = interp1d(t_values_dense, normalized_arc_lengths, kind='linear', fill_value="extrapolate")
         return inverse_translation_func
-    
+
     # Interpolation function (this will map [0, 1] to [t1, t2])
     translation_func = interp1d(normalized_arc_lengths, t_values_dense, kind='linear', fill_value="extrapolate")
     return translation_func 
 
-# TODO Docstring
+
 def smooth_resample_curve(points, window_length=61, poly_order=2):
     """
     Smooth and resample a curve using arc-length parameterization and Savitzky-Golay filter.
-    
+
     Parameters:
     - points: An array of shape (n, 3) representing the x, y, z coordinates.
     - window_length: Window length for Savitzky-Golay filter.
     - poly_order: Polynomial order for Savitzky-Golay filter.
-    
+
     Returns:
     - resampled_smoothed_points: An array of shape (n, 3) representing the smoothed x, y, z coordinates.
     """
     x, y, z = points[:, 0], points[:, 1], points[:, 2]
-    
+
     # Compute the cumulative distance for parameterization
     s = compute_cumulative_distance(x, y, z)
-    
+
     # Interpolate the data using the cumulative distance as the parameter
     interp_x = interp1d(s, x, kind='linear')
     interp_y = interp1d(s, y, kind='linear')
     interp_z = interp1d(s, z, kind='linear')
-    
+
     # Resample the curve at regular intervals of s
     s_resampled = np.linspace(s.min(), s.max(), len(s))
     x_resampled = interp_x(s_resampled)
     y_resampled = interp_y(s_resampled)
     z_resampled = interp_z(s_resampled)
-    
+
     # Applying Savitzky-Golay filter to the resampled data
     z_resampled_smooth = savgol_filter(z_resampled, window_length, poly_order)
     y_resampled_smooth = savgol_filter(y_resampled, window_length, poly_order)
@@ -189,8 +251,19 @@ def smooth_resample_curve(points, window_length=61, poly_order=2):
     
     return np.column_stack((x_resampled_smooth, y_resampled_smooth, z_resampled_smooth))
 
-# TODO Docstring
 def add_spline_end_points(ordered_spline_coordinates, surface_mesh, n_points=2, n_points_averaging=10):
+    """
+    Add end points to a spline. These will be linear extensions of the two ends of the spine
+
+    Parameters:
+    - ordered_spline_coordinates: An array of shape (n, 3) representing the x, y, z coordinates of the spline.
+    - surface_mesh: The mesh to which the spline belongs.
+    - n_points: The number of end points to add.
+    - n_points_averaging: The number of points to average to determine the location of the end points.
+
+    Returns:
+    - An array of shape (n + 2*n_points, 3) representing the x, y, z coordinates of the spline with end points added.
+    """
     start_points = make_intermediate_spline_end_points(ordered_spline_coordinates, surface_mesh, n_points, n_points_averaging, start = True)
     end_points = make_intermediate_spline_end_points(ordered_spline_coordinates, surface_mesh, n_points, n_points_averaging, start = False)
     
@@ -199,7 +272,6 @@ def add_spline_end_points(ordered_spline_coordinates, surface_mesh, n_points=2, 
 # PROCESSING WITH CURVE
 # --------------------------------------------------------------------------------------------
 
-# TODO Docstring
 def slice_mesh_along_curve(
         mesh, 
         curve_function, 
@@ -208,6 +280,20 @@ def slice_mesh_along_curve(
         search_space = [-1,2],
         translation_func = None
     ):
+    """
+    Slice a mesh along a curve into equal sections.
+
+    Parameters:
+    - mesh: The mesh to slice.
+    - curve_function: A function that takes a parameter t and returns an array of shape (3,) representing the x, y, and z coordinates of the point on the curve at parameter t.
+    - ticks: A list of three tuples, each containing the knots, coefficients, and degree of the B-spline in the x, y, and z directions, respectively.
+    - n_segments: The number of segments to divide the curve into.
+    - search_space: A list containing the start and end points of the search space for the parameter t.
+    - translation_func: A function that takes a parameter t and returns a new parameter t that corresponds to the same point on the curve as the original parameter t, but with respect to the original curve's parameterization.
+
+    Returns:
+    - A list of meshes representing the slices of the original mesh along the curve.
+    """
     
     intersect_obj = find_parametric_curve_mesh_intersects(mesh, curve_function,search_space)
     
@@ -232,13 +318,25 @@ def slice_mesh_along_curve(
 
     return slices
 
-# TODO Docstring
+
 def find_planes_along_parametric_curve(
         curve_function,
         n_planes,
         translation_function = None,
         plane_size = (400,400)
     ):
+    """
+    Find planes along a parametric curve.
+
+    Parameters:
+    - curve_function: A function that takes a parameter t and returns an array of shape (3,) representing the x, y, and z coordinates of the point on the curve at parameter t.
+    - n_planes: The number of planes to find.
+    - translation_function: A function that takes a parameter t and returns a new parameter t that corresponds to the same point on the curve as the original parameter t, but with respect to the original curve's parameterization.
+    - plane_size: A tuple containing the size of the planes to create.
+
+    Returns:
+    - A list of planes along the curve.
+    """
     planes = []
     
     for t in np.linspace(0,1,n_planes):
@@ -255,8 +353,19 @@ def find_planes_along_parametric_curve(
 
     return planes
 
-# TODO Docstring
+
 def slice_mesh_with_planes(mesh,planes, normal_factors = [1,-1]):
+    """
+    Slice a mesh with planes.
+
+    Parameters:
+    - mesh: The mesh to slice.
+    - planes: A list of planes to slice the mesh with.
+    - normal_factors: A list of factors to multiply the normal vectors of the planes with.
+
+    Returns:
+    - A mesh representing the slice of the original mesh with the planes.
+    """
     sliced = vedo.mesh.Mesh(mesh)
 
     for plane, factor in zip(planes,normal_factors):
@@ -266,6 +375,7 @@ def slice_mesh_with_planes(mesh,planes, normal_factors = [1,-1]):
     print(f"Closed: {sliced.is_closed()}")
 
     return sliced
+
 
 # TODO Docstring
 def measure_normalised_distances(coordinates,curve_ticks,intersect_paramameters,surface_mesh):
@@ -528,4 +638,5 @@ def measure_normalised_point_distance(
 #tipps simon: distances vorprogrammieren (not python)
 # weirdes coordinatensystem auf der surface womit man nur noch distance zur surface brauch
 # bounds einschraenken mit volume slices
+
 

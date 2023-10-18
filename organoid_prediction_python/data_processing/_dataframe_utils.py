@@ -45,6 +45,22 @@ def extract_sample_identifiers(
     return pd.DataFrame(raw_columns)
 
 def stack_time_data(dataframe, hours = ["48","72","96"]):
+    """
+    Stack dataframes with different timepoints into one dataframe.
+    
+    Parameters
+    ----------
+    dataframe: pd.DataFrame
+        The dataframe to stack.
+    hours: list of str
+        The hours to stack. The column names of the dataframe should start with the hour.
+        For example, if hours=["48","72","96"], the columns should be ["48_col1","48_col2",...,"96_colN"].
+    
+    Returns
+    -------
+    pd.DataFrame
+        The stacked dataframe.
+    """
     time_keys = [[key for key in dataframe.keys() if key[1:].startswith(str(hour))]+["Run","Plate","ID"] for hour in hours]
     dataframes_separated = [dataframe[key_list].rename(columns={key:key[5:] for key in key_list if key not in ["Run","Plate","ID"]}) for key_list in time_keys]
     
@@ -54,3 +70,4 @@ def stack_time_data(dataframe, hours = ["48","72","96"]):
         out.append(frame)
         
     return pd.concat(out,axis=0,ignore_index=True)
+
