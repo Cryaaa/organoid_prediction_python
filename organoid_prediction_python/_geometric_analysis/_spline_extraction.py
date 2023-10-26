@@ -181,19 +181,31 @@ def find_parametric_curve_mesh_intersects(mesh, parametric_curve_function, searc
     return output
 
 
-def create_translation_function(bspline_eval, ticks, curve_mesh_intersects, num_points=1000, inverse = False):
+def create_translation_function(
+    bspline_eval, 
+    ticks, 
+    curve_mesh_intersects, 
+    num_points=1000, 
+    inverse = False
+):
     """
-    Create a function that maps [0, 1] to [t1, t2] such that even t values give evenly spaced points on the curve. t=0 maps to t1 and t=1 maps to t2.
+    Create a function that maps [0, 1] to [t1, t2] such that even t values give evenly 
+    spaced points on the curve. t=0 maps to t1 and t=1 maps to t2.
 
     Parameters:
-    - bspline_eval: A function that takes a parameter t and returns an array of shape (3,) representing the x, y, and z coordinates of the point on the B-spline at parameter t.
-    - ticks: A list of three tuples, each containing the knots, coefficients, and degree of the B-spline in the x, y, and z directions, respectively.
-    - curve_mesh_intersects: A ParamIntersections object containing the coordinates and parameters of the intersections between the curve and the mesh.
+    - bspline_eval: A function that takes a parameter t and returns an array of shape (3,) 
+        representing the x, y, and z coordinates of the point on the B-spline at parameter t.
+    - ticks: A list of three tuples, each containing the knots, coefficients, and degree of 
+        the B-spline in the x, y, and z directions, respectively.
+    - curve_mesh_intersects: A ParamIntersections object containing the coordinates and 
+        parameters of the intersections between the curve and the mesh.
     - num_points: The number of points to sample densely between t1 and t2.
-    - inverse: Whether to create a function that maps [t1, t2] back to [0, 1] instead of [0, 1] to [t1, t2].
+    - inverse: Whether to create a function that maps [t1, t2] back to [0, 1] instead of 
+        [0, 1] to [t1, t2].
 
     Returns:
-    - A function that maps [0, 1] to [t1, t2] or [t1, t2] to [0, 1], depending on the value of inverse.
+    - A function that maps [0, 1] to [t1, t2] or [t1, t2] to [0, 1], depending on the value 
+        of inverse.
     """
     t1, t2 = curve_mesh_intersects
     # Sample t-values densely between t1 and t2
@@ -264,8 +276,20 @@ def add_spline_end_points(ordered_spline_coordinates, surface_mesh, n_points=2, 
     Returns:
     - An array of shape (n + 2*n_points, 3) representing the x, y, z coordinates of the spline with end points added.
     """
-    start_points = make_intermediate_spline_end_points(ordered_spline_coordinates, surface_mesh, n_points, n_points_averaging, start = True)
-    end_points = make_intermediate_spline_end_points(ordered_spline_coordinates, surface_mesh, n_points, n_points_averaging, start = False)
+    start_points = make_intermediate_spline_end_points(
+        ordered_spline_coordinates, 
+        surface_mesh, 
+        n_points, 
+        n_points_averaging, 
+        start = True
+    )
+    end_points = make_intermediate_spline_end_points(
+        ordered_spline_coordinates, 
+        surface_mesh, 
+        n_points, 
+        n_points_averaging, 
+        start = False
+    )
     
     return np.concatenate((start_points,ordered_spline_coordinates,end_points),axis=0)
 
@@ -495,7 +519,13 @@ def make_norm_vector(point1, point2):
     return vector / np.linalg.norm(vector)
 
 # TODO Docstring
-def make_intermediate_spline_end_points(ordered_spline_coordinates, surface_mesh, n_points=2, n_points_averaging=10, start = True):
+def make_intermediate_spline_end_points(
+    ordered_spline_coordinates, 
+    surface_mesh, 
+    n_points=2, 
+    n_points_averaging=10, 
+    start = True
+):
     point1 = ordered_spline_coordinates[0]
     point2 = np.mean(ordered_spline_coordinates[1:n_points_averaging+1], axis=0)
     if not start:
