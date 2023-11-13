@@ -524,8 +524,34 @@ def make_intermediate_spline_end_points(
     surface_mesh, 
     n_points=2, 
     n_points_averaging=10, 
-    start = True
+    start=True
 ):
+    """
+    Generates intermediate points along a spline on a surface mesh.
+
+    This function computes intermediate points between the start or end of a spline 
+    and the surface mesh. It averages coordinates near the spline's start or end
+    to create a smoother transition, then projects these points up to the surface mesh.
+
+    Parameters:
+    -----------
+    ordered_spline_coordinates : ndarray
+        An array of coordinates (x, y, z) defining the spline.
+    surface_mesh : Mesh object
+        The surface mesh onto which the spline intersects.
+    n_points : int, optional
+        The number of intermediate points to generate (default is 2).
+    n_points_averaging : int, optional
+        The number of points to average for calculating the end point on the spline (default is 10).
+    start : bool, optional
+        If True, calculates points from the start of the spline, otherwise from the end (default is True).
+
+    Returns:
+    --------
+    points : list of ndarray
+        A list containing the intermediate points along the spline.
+    """
+    # Get the first point and average of first few points if start is True, otherwise use the end points
     point1 = ordered_spline_coordinates[0]
     point2 = np.mean(ordered_spline_coordinates[1:n_points_averaging+1], axis=0)
     if not start:
@@ -535,15 +561,20 @@ def make_intermediate_spline_end_points(
             axis=0
         )
     
-    vector = make_norm_vector(point2,point1)
-    intersect = surface_mesh.intersect_with_line(point1,point1 + vector*1000)
+    # Compute the normalized vector from point1 to point2
+    vector = make_norm_vector(point2, point1)
+
+    # Intersect this vector with the surface mesh
+    intersect = surface_mesh.intersect_with_line(point1, point1 + vector * 1000)
     
-    distance = np.linalg.norm(point1-intersect)
+    # Calculate the distance from point1 to the intersection point
+    distance = np.linalg.norm(point1 - intersect)
     print(distance)
     
+    # Generate the intermediate points
     points = []
     for i in range(n_points):
-        points.append(point1 + vector*(i+1)*(distance/ (n_points+1)))
+        points.append(point1 + vector * (i + 1) * (distance / (n_points + 1)))
     print(points)    
     return points
 
