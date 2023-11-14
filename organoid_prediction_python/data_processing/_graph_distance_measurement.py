@@ -1,6 +1,6 @@
 # code taken and modified from this file: 
 # https://github.com/jnowak90/GraVisGUI/blob/89a8f0945c27596cde13f0aad81fe17ed9d9b6a2/SourceCode/ShapeGUI.py#L1834
-# TODO add license
+# under the GNU General Public License v3.0 defined at https://github.com/jnowak90/GraVisGUI/blob/master/LICENSE
 import networkx as nx
 import numpy as np
 import scipy as sp

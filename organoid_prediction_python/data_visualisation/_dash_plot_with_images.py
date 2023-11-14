@@ -11,7 +11,28 @@ import numpy as np
 from matplotlib.colors import to_hex
 
 # code taken and modified from: https://dash.plotly.com/dash-core-components/tooltip?_gl=1*9tyg7p*_ga*NDYwMzcxMTAxLjE2Njk3MzgyODM.*_ga_6G7EE0JNSC*MTY3MzI2ODgyOS45LjEuMTY3MzI2OTA0Ni4wLjAuMA..
-# TODO put license here
+# under the The MIT License (MIT)
+
+# Copyright (c) 2023 Plotly, Inc
+
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+
 def get_dash_app_3D_scatter_hover_images(
     dataframe:pd.DataFrame,
     plot_keys:list, 
@@ -35,9 +56,10 @@ def get_dash_app_3D_scatter_hover_images(
     hue: str
         A string representing the column name in the dataframe that contains the labels 
         associated with the data points.
-    images: 
+    images: np.ndarray
         A numpy array containing the images to be displayed in the hover information.
-
+    additional_info: str
+        Column name of information which will be displayed with the hover data
     Returns:
         app: a Dash app object representing the 3D scatter plot with hover information.
     """
@@ -150,7 +172,7 @@ def get_dash_app_2D_scatter_hover_images(
     image_size: int = 200,
 ):
     """
-    The get_dash_app_3D_scatter_hover_images() function creates a Dash app that displays a 3D 
+    The get_dash_app_2D_scatter_hover_images() function creates a Dash app that displays a 2D 
     scatter plot with hover information for each data point. The hover information consists of 
     an image and a label associated with the data point. The image is retrieved from an array 
     of images passed to the function.
@@ -160,13 +182,17 @@ def get_dash_app_2D_scatter_hover_images(
     dataframe: pd.DataFrame
         A Pandas DataFrame containing the data to be plotted.
     plot_keys: list 
-        A list of column names in the dataframe that represent the x, y, and z coordinates of 
+        A list of column names in the dataframe that represent the x and y coordinates of 
         the data points.
     hue: str
         A string representing the column name in the dataframe that contains the labels 
         associated with the data points.
-    images: 
+    images: np.ndarray
         A numpy array containing the images to be displayed in the hover information.
+    additional_info: str
+        Column name of information which will be displayed with the hover data
+    image_size: int
+        Size of the preview image displayed when hovering over a datapoint
 
     Returns:
         app: a Dash app object representing the 3D scatter plot with hover information.

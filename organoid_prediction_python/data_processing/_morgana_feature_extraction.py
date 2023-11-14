@@ -10,6 +10,28 @@ import multiprocessing
 import tqdm
 from morgana.DatasetTools.multiprocessing import istarmap
 
+# Code Reused under MIT License from morgana: https://github.com/LabTrivedi/MOrgAna 
+# MIT License
+# Copyright (c) [2021] [MOrgAna]
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+#Custom Wrapper around morgana code
 def calculate_morgana_shapes(
     masks: np.ndarray, 
     mask_paths: list,
@@ -76,9 +98,9 @@ def calculate_morgana_shapes(
     
     return df.transpose()
 
-# TODO put in own file with license attached
-# Taken from morgana: https://github.com/LabTrivedi/MOrgAna and modified 
-# to work with straightened images and mask images without intensity images
+
+
+# Modified to work with straightened images and mask images without intensity images
 def compute_morphological_info_no_mesh(
     mask: np.ndarray, 
     f_ma: str,
