@@ -1,17 +1,23 @@
 import numpy as np
-from scipy.ndimage import map_coordinates
-from scipy.ndimage import label
-from skimage.morphology import binary_dilation, disk
-from skimage.measure import regionprops
-from morgana.ImageTools.morphology import (
-    anchorpoints, 
-    spline, 
-    midline, 
-    meshgrid
-)
+from skimage.measure import regionprops,label
 
-# TODO docstring
-def keep_label_closest_to_avg_size(mask, avg_size = 12000):
+def keep_label_closest_to_avg_size(mask, avg_size = 12000,label_mask=True):
+    """
+    This function takes in a binary mask image and returns the mask with only the label closest to the average size
+    (in terms of area) of all the labels in the mask.
+
+    -----------
+    Parameters:
+        mask: a binary numpy array representing the input mask image.
+        avg_size: an integer representing the average size (in terms of area) of all labels in the mask.
+
+    Returns:
+        A binary numpy array representing the mask with only the label closest to the average size.
+    """
+    if np.max(mask) ==0:
+        return mask
+    if label_mask:
+        mask = label(mask)
     areas=[]
     for prop in regionprops(mask):
         areas.append(prop["area"])
@@ -23,42 +29,29 @@ def keep_label_closest_to_avg_size(mask, avg_size = 12000):
     
     return np.take(np.array([0] + flag_list), mask)
 
-# Code modified from Morgana: 
-# https://github.com/LabTrivedi/MOrgAna/blob/master/morgana/ImageTools/morphology/computemorphology.py
-# https://github.com/LabTrivedi/MOrgAna/blob/master/morgana/ImageTools/straightmorphology/computestraightmorphology.py
-# TODO docstring
-def straighten_mask_and_image(mask,intensity_image,image_to_reshape = None,margin = 3):
-    
-    strele = disk(margin)
-    dilated_mask = binary_dilation(mask,strele)
-    dilated_mask = label(dilated_mask)[0]
-    
-    props = regionprops(dilated_mask)
-    slice_prop = props[0]["slice"]
 
-    bf = intensity_image
-    if len(bf.shape) == 2:
-        bf = np.expand_dims(bf,0)
-    if bf.shape[-1] == np.min(bf.shape):
-        bf = np.moveaxis(bf, -1, 0)
-    bf= bf[0][slice_prop]
-    ma= dilated_mask[slice_prop]
-    original_mask_cropped = mask[slice_prop]
+def keep_labels_closest_to_stack_median(mask_stack):
+    """
+    This function takes in a stack of binary mask images and returns a new stack with each image containing only the 
+    label closest to the median size (in terms of area) of all the labels in the corresponding input mask.
 
-    anch = anchorpoints.compute_anchor_points(dilated_mask,slice_prop,1)
-    N_points, tck = spline.compute_spline_coeff(ma,bf,anch)
+    -----------
+    Parameters:
+        mask_stack: a 3D numpy array representing the stack of binary mask images.
 
-    diagonal = int(np.sqrt(ma.shape[0]**2+ma.shape[1]**2)/2)
-    mid, tangent, width = midline.compute_midline_and_tangent(anch,N_points,tck,diagonal)
+    Returns:
+        A 3D numpy array representing the new stack of binary mask images with each image containing only the label closest 
+        to the median size of all the labels in the corresponding input mask.
+    """
+    areas=[]
+    for mask in mask_stack:
+        for prop in regionprops(mask):
+            areas.append(prop["area"])
 
-    mesh = meshgrid.compute_meshgrid(mid, tangent, width)
+    area_median = np.median(areas)
+    out = np.array([
+        keep_label_closest_to_avg_size(mask,avg_size=area_median) 
+        for mask in mask_stack
+    ])
 
-    out_image = bf
-    if image_to_reshape is not None:
-        out_image = image_to_reshape[slice_prop]
-
-    # straighten the mask
-    ma_straight = np.reshape(map_coordinates(original_mask_cropped,np.reshape(mesh,(mesh.shape[0]*mesh.shape[1],2)).T,order=0,mode='constant',cval=0).T,(mesh.shape[0],mesh.shape[1]))
-    bf_straight = np.reshape(map_coordinates(out_image,np.reshape(mesh,(mesh.shape[0]*mesh.shape[1],2)).T,order=0,mode='constant',cval=0).T,(mesh.shape[0],mesh.shape[1]))
-    
-    return ma_straight, bf_straight
+    return out

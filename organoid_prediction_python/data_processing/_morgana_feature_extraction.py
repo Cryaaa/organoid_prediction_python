@@ -1,19 +1,44 @@
 import pandas as pd
 import numpy as np
-import pandas as pd
 import os
 
 from scipy.ndimage import label
 from skimage import measure
 
 from morgana.ImageTools.locoefa import computecoeff
+import multiprocessing
+import tqdm
+from morgana.DatasetTools.multiprocessing import istarmap
 
+# Code Reused under MIT License from morgana: https://github.com/LabTrivedi/MOrgAna 
+# MIT License
+# Copyright (c) [2021] [MOrgAna]
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+#Custom Wrapper around morgana code
 def calculate_morgana_shapes(
     masks: np.ndarray, 
     mask_paths: list,
+    parrallel: int = 1,
 ):
     """
-    function calculates regionproperties of all images specified by masks 
+    function calculates advanced morgana regionproperties of all images specified by masks 
     and mask_paths
 
     Parameters
@@ -24,19 +49,58 @@ def calculate_morgana_shapes(
         list of strings specifying the full path where the 
         masks are located. Order must match image order in
         masks
+    parrallel: int
+        number of cores to use for processing. if set to 1 
+        no multiprocessing will be used
     """
-    props = []
-    for mask, mask_path in zip(masks,mask_paths):
-        prop = compute_morphological_info_no_mesh(
-            mask,
-            mask_path,
+    max_vals = np.array([np.max(img) for img in masks])
+    empty_img_indices = np.squeeze(np.argwhere(max_vals==0))
+    
+    if parrallel <= 1:
+        props = []
+        for i in tqdm.trange(0,len(masks),1):
+            mask, mask_path = masks[i],mask_paths[i]
+            if np.max(mask)==0:
+                continue
+
+            prop = compute_morphological_info_no_mesh(
+                mask,
+                mask_path,
+            )
+            props.append(prop)
+
+    else:
+
+        
+        pool = multiprocessing.Pool(parrallel)
+        non_empty_img_indices = np.squeeze(np.argwhere(max_vals==1)).astype(int)
+        N_img = len(non_empty_img_indices) 
+        props = list(
+            tqdm.tqdm(
+                pool.istarmap(
+                    compute_morphological_info_no_mesh, 
+                    zip(np.array(masks)[non_empty_img_indices], np.array(mask_paths)[non_empty_img_indices])
+                ), 
+                total = N_img 
+            ) 
         )
+    
+        pool.close()
+
+    for prop in props:
         reform_props(prop)
-        props.append(prop)
+
+    empty_prop = pd.Series({k:np.nan for k in props[0].keys()})
+    for idx in empty_img_indices:
+        props.insert(idx,empty_prop)
     df = pd.concat(props,axis=1)
+
+    
     return df.transpose()
 
-# Taken from morgana and modified to work with straightened images
+
+
+# Modified to work with straightened images and mask images without intensity images
 def compute_morphological_info_no_mesh(
     mask: np.ndarray, 
     f_ma: str,

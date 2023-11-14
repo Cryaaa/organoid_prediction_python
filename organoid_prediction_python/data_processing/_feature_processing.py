@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from .._utils import _try_dropping
 from scipy.spatial.distance import euclidean
+from sklearn.preprocessing import StandardScaler, RobustScaler
 
 def correlation_filter(dataframe:pd.DataFrame, threshold:float = 0.95) -> pd.DataFrame:
     """
@@ -55,7 +56,81 @@ def fraction_measurement(
     difference = [el1/el2 for el1,el2 in zip(series1,series2)]
 
     return pd.Series(data=difference,index=index,name=name)
- 
+
+def differential_standard_scaling(
+    dataframe, 
+    columns_regular, 
+    columns_by_index, 
+    columns_unscaled,
+    columns_group_scaling,
+    by_index_grouping = ["Run","Plate"]
+):
+    """
+    Apply different scaling methods to specified columns of a DataFrame.
+
+    This function allows for differential scaling of various columns in a DataFrame.
+    It supports regular standard scaling, scaling by index groups, and group scaling 
+    along with columns that require no scaling.
+
+    Parameters
+    ----------
+    dataframe : pandas.DataFrame
+        The DataFrame to be scaled.
+    columns_regular : list of str
+        Columns to be scaled using regular standard scaling.
+    columns_by_index : list of str
+        Columns to be scaled by index groupings.
+    columns_unscaled : list of str
+        Columns that should not be scaled.
+    columns_group_scaling : list of str
+        Columns to be scaled using group scaling method.
+    by_index_grouping : list of str, optional
+        Column names used for grouping when scaling by index. 
+        Default is ["Run", "Plate"].
+
+    Returns
+    -------
+    pandas.DataFrame
+        A DataFrame with the specified columns scaled as requested.
+
+    Notes
+    -----
+    Regular standard scaling scales columns independently.
+    Scaling by index groups involves scaling within defined groups.
+    Group scaling applies standard scaling based on the mean and standard deviation 
+    of the entire column group.
+    """
+
+    def group_scaling(df):
+        matrix = df.to_numpy()
+        mean = np.nanmean(matrix)
+        stdd = np.nanstd(matrix)
+        return (matrix-mean)/stdd
+        
+    df_no_scaling = dataframe[columns_unscaled]
+    df_reg_scaling = dataframe[columns_regular]
+    df_index_scaling = dataframe[columns_by_index]
+    df_group_scaling = dataframe[columns_group_scaling]
+
+    df_reg_scaling = pd.DataFrame(
+        StandardScaler().fit_transform(df_reg_scaling), 
+        columns=columns_regular,
+        index = df_reg_scaling.index
+    )
+    
+    df_index_scaling = standardscale_per_plate(
+        df_index_scaling,
+        grouping_keys=by_index_grouping
+    )
+    
+    df_group_scaling = pd.DataFrame(
+        group_scaling(df_group_scaling),
+        columns=columns_group_scaling,
+        index=df_group_scaling.index
+    )
+
+    return pd.concat([df_no_scaling,df_reg_scaling,df_index_scaling,df_group_scaling],axis=1)
+
 def standardscale_per_plate(
     dataframe: pd.DataFrame, 
     grouping_keys: list =["Run", "Plate"],
@@ -78,7 +153,35 @@ def standardscale_per_plate(
     transformed: pd.DataFrame =  grouped.transform(
             lambda x: (x - x.mean()) / x.std()
         )
-    transformed.dropna(axis=1,inplace = True)
+    transformed.dropna(axis=1,inplace = True, thresh=1)
+
+    return transformed
+
+def percentile_scale_per_plate(
+    dataframe: pd.DataFrame,
+    percentile = 1, 
+    grouping_keys: list =["Run", "Plate"],
+) -> pd.DataFrame:
+    """
+    Function that performs standard-scaling / z-normalisation in subgroups like 
+    plates of samples. The grouping_keys specify the index levels which will be 
+    grouped before being z-normalised / standard-scaled. 
+
+    Parameters
+    ----------
+    dataframe: pd.DataFrame
+        Input DataFrame that will be processed. Must be a multi-index DataFrame
+    grouping_keys: list
+        list of strings that are part of the multiindex which will be used for
+        grouping
+    """
+    data = _try_dropping(dataframe)
+    grouped = data.groupby(grouping_keys)
+    scaler = RobustScaler(with_centering=False,quantile_range=(percentile,100-percentile))
+    transformed: pd.DataFrame =  grouped.transform(
+            lambda x: scaler.fit_transform(x.to_numpy().reshape(-1, 1)).reshape(1, -1)[0]
+        )
+    transformed.dropna(axis=1,inplace = True, thresh=1)
 
     return transformed
 
@@ -121,18 +224,44 @@ def split_by_cellprofiler_category(
     return output
 
 
-# TODO docstring or decide if I need to keep this
 def reform_cellprofiler_table(
     dataframe: pd.DataFrame,
-    cellprofiler_useless_columns:list = [
-        "ImageNumber","Metadata_FileLocation","Metadata_Frame",
-        "Metadata_Series","Metadata_Channel",'AreaShape_NormalizedMoment_0_0', 
+    cellprofiler_useless_columns: list = [
+        "ImageNumber", "Metadata_FileLocation", "Metadata_Frame",
+        "Metadata_Series", "Metadata_Channel", 'AreaShape_NormalizedMoment_0_0', 
         'AreaShape_NormalizedMoment_0_1', 'AreaShape_NormalizedMoment_1_0',
-    ]
+    ],
+    spit_out: bool = False
 ) -> None:
     """
-    
+    Reformats a DataFrame obtained from CellProfiler by renaming and removing specified columns.
+
+    This function is tailored to clean up data tables generated by CellProfiler. It renames certain metadata columns
+    for clarity and drops columns deemed unnecessary or redundant for further analysis.
+
+    Parameters
+    ----------
+    dataframe : pd.DataFrame
+        The DataFrame to be reformatted. Typically contains data from CellProfiler.
+    cellprofiler_useless_columns : list of str, optional
+        A list of column names that should be removed from the DataFrame.
+        Defaults to a predefined list of common columns not typically needed for further analysis.
+    spit_out : bool, optional
+        If True, the function returns the modified DataFrame instead of modifying it in place.
+        Defaults to False.
+
+    Returns
+    -------
+    pd.DataFrame, optional
+        The modified DataFrame, only returned if `spit_out` is set to True.
+
+    Notes
+    -----
+    The function identifies and removes columns starting with "FileName" or "PathName",
+    as well as any columns listed in `cellprofiler_useless_columns`. It also renames specific 
+    metadata columns for consistency and ease of use in subsequent analyses.
     """
+
     useless_keys = []
     for key in dataframe.keys():
         if key.startswith("FileName") or key.startswith("PathName") or key in cellprofiler_useless_columns:
@@ -140,13 +269,17 @@ def reform_cellprofiler_table(
 
     mapper = {
         "Metadata_Plate":"Plate",
+        "Metadata_ID":"ID",
         "Metadata_Well":"ID",
-        "Metadata_Run":"Run"
+        "Metadata_Run":"Run",
     }
     dataframe.rename(columns=mapper,inplace=True)
     dataframe.drop(useless_keys,axis = 1 , inplace=True)
 
-# TODO docstring or decide if to keep this
+    if spit_out:
+        return dataframe
+
+# TODO POSSIBLY REMOVED
 def distance_series(
     dataframe1: pd.DataFrame,
     dataframe2: pd.DataFrame, 
@@ -175,7 +308,7 @@ def distance_series(
                  
     return pd.Series(data=distances,index=index,name=column_name)
 
-# TODO docstring and decide if to keep this
+# TODO POSSIBLY REMOVED
 def correlation_filter_per_category_and_source(dataframe, correlation_threshold = 0.95):
     BF_keys = [key for key in dataframe.keys() if not key.startswith("BRA")]
     BRA_keys = [key for key in dataframe.keys() if key.startswith("BRA") and "Fraction" not in key]

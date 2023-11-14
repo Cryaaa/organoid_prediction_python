@@ -69,7 +69,7 @@ setup(
     # Alternatively, if you just want to distribute a single Python file, use
     # the `py_modules` argument instead as follows, which will expect a file
     # called `my_module.py` to exist:
-    #
+    #``
     #   py_modules=["my_module"],
     #
     packages=find_packages(),  # Required
@@ -78,7 +78,7 @@ setup(
 
     install_requires=["seaborn","umap-learn","hdbscan","numpy", "pyopencl", "scikit-image", 
                       "scikit-learn", "pyclesperanto-prototype", "pandas",'pywebview',
-                      "pythonnet==3.0.0a2", "vispy", "networkx"],  
+                      "pythonnet==3.0.0a2", "vispy", "networkx","jupyter-dash","plotly", "morgana"],  
 
     project_urls={ 
         'Bug Reports': 'https://github.com/Cryaaa/organoid_prediction_python/issues',
