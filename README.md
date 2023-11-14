@@ -5,6 +5,9 @@ This library contains image and data analysis functions to analyse high throughp
 - Data Processing
 - Visualisation
 
+# Installation
+To install this library you will need to have pip installed in your environment of choice. Clone this GitHub Repository to your drive and navigate to the folder containing `setup.py` and run the command: `pip install -e .`
+
 # Disclaimer
 This is not (yet) an exhaustive library for organoid analysis and I do not guarantee functionality
 
