@@ -585,11 +585,8 @@ def curve_distance(t, P, C):
 # Distance to surface as objective function
 # TODO Docstring
 def surface_distance(t, P, C, surface_mesh: vedo.mesh.Mesh):
-    # Note: Update this function to compute the distance to the surface along vector V
-    V = P - C(t)
-    #print(np.squeeze(C(t)),np.squeeze(C(t) + V*1000))
-    surface_intersect = surface_mesh.intersect_with_line(np.squeeze(C(t)),np.squeeze(C(t) + V*1000000))
-    #print(f"intersect: {surface_intersect}")
+
+    surface_intersect = surf_intersect_curve_point_surface(C,t,P,surface_mesh,1000000)
 
     # This takes care of the case that for the given point no surface intersect exists
     if len(np.squeeze(surface_intersect)) == 0:
@@ -604,10 +601,6 @@ def surface_distance(t, P, C, surface_mesh: vedo.mesh.Mesh):
         surface_intersect = surface_intersect[np.argmin(lengths)]
 
     dist_surf = np.linalg.norm(P - np.squeeze(surface_intersect))
-    
-    # handles the case that our intersect is closer to curve than our point
-    # if curve_distance(t,surface_intersect,C) < curve_distance(t,P,C):
-    #    return np.inf
     
     return dist_surf
 
@@ -654,11 +647,13 @@ def surface_distance_more_complex(t, P, C, surface_mesh: vedo.mesh.Mesh):
 
 # TODO Docstring
 def combined_distance(t,P,C,surface_mesh,w1 = 0.5, w2 = 0.5):
-    return w1 *curve_distance(t, P, C) + w2 * surface_distance(t, P, C, surface_mesh)
+    loss = w1 *curve_distance(t, P, C) + w2 * surface_distance(t, P, C, surface_mesh)
+    print(loss)
+    return loss
 
 # TODO Docstring
 def find_projected_point_combined(curve_func, point, surface_mesh, bounds): 
-    result = differential_evolution(combined_distance, [bounds], args=(point, curve_func, surface_mesh))
+    result = differential_evolution(combined_distance, [bounds], args=(point, curve_func, surface_mesh),)
     return result.x[0]
 
 # TODO Docstring
@@ -671,14 +666,14 @@ def measure_normalised_point_distance(
     parameter_translation_func = None,
     line_length = 1000000
 ):
-    complex_obj = nppas.to_vedo_mesh((array1,array2))
-    curve_parameter = find_projected_point_combined(curve_function,point,complex_obj,search_space)
+    surface_mesh = nppas.to_vedo_mesh((array1,array2))
+    curve_parameter = find_projected_point_combined(curve_function,point,surface_mesh,search_space)
     projected_point = np.squeeze(np.array(curve_function(curve_parameter)))
-    
-    curve_surf_vector = point - projected_point
-    curve_surf_vector = curve_surf_vector / np.linalg.norm(curve_surf_vector)
+    print(curve_parameter)
 
-    surface_intersect = complex_obj.intersect_with_line(projected_point,projected_point + curve_surf_vector*line_length)
+    surface_intersect = surf_intersect_curve_point_surface(curve_function,curve_parameter,point,surface_mesh,line_length)
+
+
     if len (surface_intersect) > 1:
         lengths = [np.linalg.norm(inters - projected_point) for inters in surface_intersect]
         surface_intersect = surface_intersect[np.argmin(lengths)]
@@ -700,4 +695,8 @@ def measure_normalised_point_distance(
 # weirdes coordinatensystem auf der surface womit man nur noch distance zur surface brauch
 # bounds einschraenken mit volume slices
 
-
+def surf_intersect_curve_point_surface(C,t,P,surface_mesh,line_length):
+    curve_point_vector = P - C(t)
+    curve_point_vector = curve_point_vector / np.linalg.norm(curve_point_vector)
+    second_point = P + curve_point_vector*line_length
+    return surface_mesh.intersect_with_line(np.squeeze(P),np.squeeze(second_point))
