@@ -673,7 +673,9 @@ def measure_normalised_point_distance(
 
     surface_intersect = surf_intersect_curve_point_surface(curve_function,curve_parameter,point,surface_mesh,line_length)
 
-
+    if len(np.squeeze(surface_intersect)) == 0:
+        return np.nan, np.nan
+    
     if len (surface_intersect) > 1:
         lengths = [np.linalg.norm(inters - projected_point) for inters in surface_intersect]
         surface_intersect = surface_intersect[np.argmin(lengths)]
@@ -690,13 +692,13 @@ def measure_normalised_point_distance(
     
     return ap_dist, normalised_dist    
 
-
-#tipps simon: distances vorprogrammieren (not python)
-# weirdes coordinatensystem auf der surface womit man nur noch distance zur surface brauch
-# bounds einschraenken mit volume slices
-
+# TODO Docstring
 def surf_intersect_curve_point_surface(C,t,P,surface_mesh,line_length):
     curve_point_vector = P - C(t)
     curve_point_vector = curve_point_vector / np.linalg.norm(curve_point_vector)
-    second_point = P + curve_point_vector*line_length
+    second_point = P + curve_point_vector * line_length
     return surface_mesh.intersect_with_line(np.squeeze(P),np.squeeze(second_point))
+
+#tipps simon: distances vorprogrammieren (not python)
+# weirdes coordinatensystem auf der surface womit man nur noch distance zur surface brauch
+# bounds einschraenken mit volume slices -> nur minimales speedup
