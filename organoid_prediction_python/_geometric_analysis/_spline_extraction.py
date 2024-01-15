@@ -13,6 +13,7 @@ from functools import partial
 import concurrent.futures as cf
 import time
 from tqdm import tqdm
+import warnings
 
 # TODO import from updated toska library, Credit Allyson
 
@@ -657,6 +658,11 @@ def find_projected_point_combined(curve_func, point, surface_mesh, bounds):
     return result.x[0]
 
 # TODO Docstring
+def find_projected_point_only_curve(curve_func, point, bounds): 
+    result = differential_evolution(curve_distance, [bounds], args=(point, curve_func),)
+    return result.x[0]
+
+# TODO Docstring
 def measure_normalised_point_distance(
     point,
     array1,
@@ -674,6 +680,7 @@ def measure_normalised_point_distance(
     surface_intersect = surf_intersect_curve_point_surface(curve_function,curve_parameter,point,surface_mesh,line_length)
 
     if len(np.squeeze(surface_intersect)) == 0:
+        warnings.warn(f"Point at {point} has no surface intersection")
         return np.nan, np.nan
     
     if len (surface_intersect) > 1:
