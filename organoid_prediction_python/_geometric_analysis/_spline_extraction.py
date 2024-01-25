@@ -701,6 +701,36 @@ def measure_normalised_point_distance(
 
 # TODO Docstring
 def surf_intersect_curve_point_surface(C,t,P,surface_mesh,line_length):
+    """
+    Function that calculates the intersection of the vector between spine (C) 
+    at parameter t and point (P) for a given surface mesh. Line length should 
+    be chosen to guarantee an intersection.
+
+    Initial approach: Use vector from spine to point
+
+    New approach: (can yield no intersection): Use Vector from point to surface 
+        with normal calculated from spine
+
+    Parameters
+    ----------
+    C: func
+        Curve function representing the spine
+    t: float
+        Parameter at which the curve point should be taken
+    P: array
+        coordinates of the point to be queried
+    surface_mesh: vedo.mesh.Mesh
+        surface mesh with which to calculate the intersection
+    line_length: float
+        length of the vector to be used to calculate the intersection
+    
+    """
+    # Initial Approach
+    # curve_point_vector = P - C(t)
+    # curve_point_vector = curve_point_vector / np.linalg.norm(curve_point_vector)
+    # second_point = np.squeeze(C(t)) + curve_point_vector * line_length
+    # return surface_mesh.intersect_with_line(np.squeeze(P),np.squeeze(second_point))
+
     curve_point_vector = P - C(t)
     curve_point_vector = curve_point_vector / np.linalg.norm(curve_point_vector)
     second_point = P + curve_point_vector * line_length
