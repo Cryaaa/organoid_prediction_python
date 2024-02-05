@@ -331,6 +331,8 @@ def slice_mesh_along_curve(
         translation_function=translation_func,
     )
     
+    centroids = curve_function(translation_func(np.linspace((1/(2*n_segments)),1-(1/(2*n_segments)),n_segments)))
+
     slices = []
     for i in range(len(planes)-1):
         if i == 0:
@@ -339,8 +341,20 @@ def slice_mesh_along_curve(
             slice = slice_mesh_with_planes(mesh,[planes[i]])
         else:
             slice = slice_mesh_with_planes(mesh, planes[i:i+2])
-        slices.append(slice)
+        
+        # This takes care of the case where slicing can lead to to volumes that are not connected in these cases 
+        # we only want to take the volume that is closest to the curve section we created it at
+        centroid = centroids[i]
+        split = slice.split()
+        if len(split) > 1:
+            centres = [spl.center_of_mass() for spl in split]
+            print(centres)
+            closest = np.argmin([np.linalg.norm(cent - centroid) for cent in centres])
+            slices.append(split[closest])
 
+        else:
+            slices.append(split[0])
+  
     return slices
 
 
