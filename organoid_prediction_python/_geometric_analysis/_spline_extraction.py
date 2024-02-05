@@ -403,9 +403,13 @@ def slice_mesh_with_planes(mesh,planes, normal_factors = [1,-1]):
 
 
 # TODO Docstring
-def measure_normalised_distances(coordinates,curve_ticks,intersect_paramameters,surface_mesh):
+def measure_normalised_distances(coordinates,curve_ticks,intersect_paramameters,surface_mesh, inverse_translation_func = None):
     curve_function = make_bspline_from_ticks(curve_ticks)
-    inverse_translation_func = create_translation_function(curve_function,curve_ticks, intersect_paramameters, inverse=True)
+    
+    # TODO decide if this is the best way to do things
+    if inverse_translation_func is None:
+        inverse_translation_func = create_translation_function(curve_function,curve_ticks, intersect_paramameters, inverse=True)
+    
     array_1, array_2 = nppas.to_napari_surface_data(surface_mesh)
 
     start = time.perf_counter()
