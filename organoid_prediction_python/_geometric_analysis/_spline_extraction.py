@@ -348,7 +348,7 @@ def slice_mesh_along_curve(
         split = slice.split()
         if len(split) > 1:
             centres = [spl.center_of_mass() for spl in split]
-            print(centres)
+            # print(centres)
             closest = np.argmin([np.linalg.norm(cent - centroid) for cent in centres])
             slices.append(split[closest])
 
@@ -448,6 +448,134 @@ def measure_normalised_distances(coordinates,curve_ticks,intersect_paramameters,
     print(f"processing took {int((end-start)/60)} min, {(end-start)%60} s")
 
     return np.array(result_grabbed)
+
+# TODO Docstring
+def measure_normalised_distances_simple_iteration(
+        coordinates,
+        curve_ticks,
+        intersect_paramameters,
+        surface_mesh, 
+        inverse_translation_func = None
+    ):
+    curve_function = make_bspline_from_ticks(curve_ticks)
+    
+    # TODO decide if this is the best way to do things
+    if inverse_translation_func is None:
+        inverse_translation_func = create_translation_function(curve_function,curve_ticks, intersect_paramameters, inverse=True)
+    
+    array_1, array_2 = nppas.to_napari_surface_data(surface_mesh)
+
+    start = time.perf_counter()
+
+    numbers_tqdm = tqdm(coordinates)
+    # Initialize pool and run computations, collecting results in a list
+
+    results = [
+        measure_normalised_point_distance(
+            i,
+            array_1,
+            array_2,
+            curve_function,
+            intersect_paramameters,
+            inverse_translation_func
+        ) for i in numbers_tqdm
+    ]
+    end = time.perf_counter()
+    print(f"processing took {int((end-start)/60)} min, {(end-start)%60} s")
+
+    return np.array(results)
+
+def measure_normalised_distances_ray_tracing(
+    coordinates,
+    curve_ticks,
+    intersect_paramameters,
+    surface_mesh,
+    resolution = 1000,
+    translation_func = None
+):
+    from trimesh import Trimesh
+    from trimesh.ray.ray_pyembree import RayMeshIntersector
+    curve_function = make_bspline_from_ticks(curve_ticks)
+    
+    trimesh_gast = Trimesh(surface_mesh.points(),surface_mesh.faces())
+    intersector = RayMeshIntersector(trimesh_gast)
+    
+    # TODO decide if this is the best way to do things
+    if translation_func is None:
+        translation_func = create_translation_function(
+            curve_function,
+            curve_ticks, 
+            intersect_paramameters, 
+            inverse=False
+        )
+    
+    start = time.process_time_ns()
+    # making a long array with all the coordinates as origins
+    # i.e. coordinate[0] repeated by resolution, coordinate[1] repeated by resolution etc.
+    coordinates_multiplied = np.swapaxes(np.array([coordinates]*resolution),0,1)
+    ray_origins = coordinates_multiplied.reshape(
+        coordinates_multiplied.shape[0]*coordinates_multiplied.shape[1],
+        coordinates_multiplied.shape[2],
+        order ="C"
+    )
+    
+    spine_points = curve_function(translation_func(np.linspace(0,1,resolution)))
+    
+    # making a long array with all of the points on the spine repeated for each coordinate
+    spine_multiplied = np.array([spine_points]*coordinates.shape[0])
+    spine_points_all_coordinates = spine_multiplied.reshape(
+        spine_multiplied.shape[0]*spine_multiplied.shape[1],
+        spine_multiplied.shape[2],
+        order ="C"
+    )
+    
+    # defining the ray directions
+    ray_norms = (ray_origins-spine_points_all_coordinates) / np.swapaxes(
+        np.array([np.linalg.norm(ray_origins-spine_points_all_coordinates,axis=1)]*3),
+        0,
+        1
+    )
+    
+    # calculating intersections
+    intersections = intersector.intersects_location(ray_origins,ray_norms,multiple_hits=False)
+    
+    # reshaping the intersections that have been found for each point 
+    # (number of coordinates, resolution) and filling all results where no 
+    # intersection was found with np.inf
+    x = (intersections[1]/resolution).astype(int)
+    y = intersections[1]%resolution
+    intersections_remapped = np.full((len(coordinates),resolution,3),np.inf)
+    intersections_remapped[x,y,:] = intersections[0]
+    
+    # calculating the distances
+    surface_dists = np.linalg.norm(intersections_remapped - coordinates_multiplied,axis= 2)
+    distances_to_spine = np.linalg.norm(coordinates_multiplied-spine_multiplied,axis=2)
+    distances_spine_to_surface = np.linalg.norm(intersections_remapped-spine_multiplied,axis=2)
+    
+    combined_dist = surface_dists + distances_to_spine
+    min_combined_dists = np.min(combined_dist,axis=1)
+    min_combined_dist_AP_loc = np.argmin(combined_dist,axis=1)/resolution
+    
+    # only take the values where the distance is not inf
+    indices_w_intersect_combined = np.squeeze(np.argwhere(min_combined_dists!=np.inf))
+    
+    # make the final array for all the AP dists
+    AP_dists = np.full(len(coordinates),np.nan)
+    AP_dists[indices_w_intersect_combined] = min_combined_dist_AP_loc[indices_w_intersect_combined]
+    
+    normalised_dists = distances_to_spine/distances_spine_to_surface
+    CS_dists_all = normalised_dists[np.arange(len(normalised_dists)),np.argmin(combined_dist,axis=1)]
+
+    # make the final array for all the AP dists
+    CS_dists = np.full(len(coordinates),np.nan)
+    CS_dists[indices_w_intersect_combined] =  CS_dists_all[indices_w_intersect_combined]
+    stop = time.process_time_ns()
+    
+    total_time = stop - start
+    print(f"processing intersections took {total_time / 1000000000}s")
+    
+    
+    return np.array(AP_dists, CS_dists).T
 
 # HELPER FUNCTIONS TODO Decide which ones can go into utils
 # ---------------------------------------------------------------------------------------------------------------------
@@ -667,7 +795,7 @@ def surface_distance_more_complex(t, P, C, surface_mesh: vedo.mesh.Mesh):
 # TODO Docstring
 def combined_distance(t,P,C,surface_mesh,w1 = 0.5, w2 = 0.5):
     loss = w1 *curve_distance(t, P, C) + w2 * surface_distance(t, P, C, surface_mesh)
-    print(loss)
+    # print(loss)
     return loss
 
 # TODO Docstring
@@ -693,7 +821,7 @@ def measure_normalised_point_distance(
     surface_mesh = nppas.to_vedo_mesh((array1,array2))
     curve_parameter = find_projected_point_combined(curve_function,point,surface_mesh,search_space)
     projected_point = np.squeeze(np.array(curve_function(curve_parameter)))
-    print(curve_parameter)
+    # print(curve_parameter)
 
     surface_intersect = surf_intersect_curve_point_surface(curve_function,curve_parameter,point,surface_mesh,line_length)
 
