@@ -417,7 +417,7 @@ def slice_mesh_with_planes(mesh,planes, normal_factors = [1,-1]):
 
 
 # TODO Docstring
-def measure_normalised_distances(coordinates,curve_ticks,intersect_paramameters,surface_mesh, inverse_translation_func = None):
+def measure_normalised_distances(coordinates,curve_ticks,intersect_paramameters,surface_mesh, inverse_translation_func = None, return_time = False):
     curve_function = make_bspline_from_ticks(curve_ticks)
     
     # TODO decide if this is the best way to do things
@@ -444,8 +444,12 @@ def measure_normalised_distances(coordinates,curve_ticks,intersect_paramameters,
             numbers_tqdm
         )
     result_grabbed = [res for res in results]
+    pool.shutdown()
     end = time.perf_counter()
     print(f"processing took {int((end-start)/60)} min, {(end-start)%60} s")
+
+    if return_time:
+        return np.array(result_grabbed),end-start
 
     return np.array(result_grabbed)
 
@@ -455,7 +459,8 @@ def measure_normalised_distances_simple_iteration(
         curve_ticks,
         intersect_paramameters,
         surface_mesh, 
-        inverse_translation_func = None
+        inverse_translation_func = None,
+        return_time = False,
     ):
     curve_function = make_bspline_from_ticks(curve_ticks)
     
@@ -482,6 +487,9 @@ def measure_normalised_distances_simple_iteration(
     ]
     end = time.perf_counter()
     print(f"processing took {int((end-start)/60)} min, {(end-start)%60} s")
+
+    if return_time:
+        return np.array(results),end-start
 
     return np.array(results)
 
@@ -575,7 +583,7 @@ def measure_normalised_distances_ray_tracing(
     print(f"processing intersections took {total_time / 1000000000}s")
     
     
-    return np.array(AP_dists, CS_dists).T
+    return np.array([AP_dists, CS_dists]).T
 
 # HELPER FUNCTIONS TODO Decide which ones can go into utils
 # ---------------------------------------------------------------------------------------------------------------------
