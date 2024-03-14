@@ -12,7 +12,7 @@ from scipy.optimize import minimize, differential_evolution
 from functools import partial
 import concurrent.futures as cf
 import time
-from tqdm import tqdm
+from tqdm.auto import tqdm
 import warnings
 
 # TODO import from updated toska library, Credit Allyson
@@ -57,9 +57,7 @@ def extract_spine_coordinates(skeleton, return_edge_points=False):
 
     # If edge points are requested, extract and return them
     if return_edge_points:
-        edge_point_idxs = np.argwhere(np.sum(adj_mat[:, spine_path], 1)[20:] == 1)
-        edge_points = np.array(e_pts)[np.ravel(edge_point_idxs)]
-        points_in_spine = set(map(tuple, edge_points)).intersection(map(tuple, coords_spine))
+        points_in_spine = set(map(tuple, e_pts)).intersection(map(tuple, coords_spine))
         spine_edge_points = np.array(list(points_in_spine))
         
         return coords_spine, spine_edge_points
@@ -447,7 +445,7 @@ def measure_normalised_distances(coordinates,curve_ticks,intersect_paramameters,
     pool.shutdown()
     end = time.perf_counter()
     print(f"processing took {int((end-start)/60)} min, {(end-start)%60} s")
-
+    # print(__name__)
     if return_time:
         return np.array(result_grabbed),end-start
 
@@ -724,13 +722,13 @@ def make_intermediate_spline_end_points(
     
     # Calculate the distance from point1 to the intersection point
     distance = np.linalg.norm(point1 - intersect)
-    print(distance)
+    # print(distance)
     
     # Generate the intermediate points
     points = []
     for i in range(n_points):
         points.append(point1 + vector * (i + 1) * (distance / (n_points + 1)))
-    print(points)    
+    # print(points)    
     return points
 
 #TODO DOcstring

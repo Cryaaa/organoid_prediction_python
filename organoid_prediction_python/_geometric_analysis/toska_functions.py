@@ -903,7 +903,10 @@ def map_spine_edges(spine_edges, incidence_matrix, branch_lengths, branch_ids):
     
     for i in spine_edges:
         pts_sum = incidence_matrix[i[0],:] + incidence_matrix[i[1],:]
-        i_id = np.where(pts_sum == 2)[0][0]
+        possible_branches = np.where(pts_sum == 2)[0]
+        #print(possible_branches)
+        possible_branch_lengths = np.array(branch_lengths)[possible_branches]
+        i_id = possible_branches[np.argmin(possible_branch_lengths)]
         img_spine_ids.append(branch_ids[i_id])
         
     return img_spine_ids
