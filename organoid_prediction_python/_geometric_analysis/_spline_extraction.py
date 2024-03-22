@@ -179,8 +179,53 @@ def find_parametric_curve_mesh_intersects(mesh, parametric_curve_function, searc
 
     return output
 
-
 def create_translation_function(
+    bspline, 
+    ticks, 
+    curve_mesh_intersects, 
+    num_points=1000000, 
+    inverse = False
+):
+    """
+    Create a function that maps [0, 1] to [t1, t2] such that even t values give evenly 
+    spaced points on the curve. t=0 maps to t1 and t=1 maps to t2.
+
+    Parameters:
+    - bspline_eval: A function that takes a parameter t and returns an array of shape (3,) 
+        representing the x, y, and z coordinates of the point on the B-spline at parameter t.
+    - ticks: A list of three tuples, each containing the knots, coefficients, and degree of 
+        the B-spline in the x, y, and z directions, respectively.
+    - curve_mesh_intersects: A ParamIntersections object containing the coordinates and 
+        parameters of the intersections between the curve and the mesh.
+    - num_points: The number of points to sample densely between t1 and t2.
+    - inverse: Whether to create a function that maps [t1, t2] back to [0, 1] instead of 
+        [0, 1] to [t1, t2].
+
+    Returns:
+    - A function that maps [0, 1] to [t1, t2] or [t1, t2] to [0, 1], depending on the value 
+        of inverse.
+    """
+    t1, t2 = curve_mesh_intersects
+    # Sample t-values densely between t1 and t2
+    t_values_dense = np.linspace(t1, t2, num_points)
+
+    # Compute arc lengths for each t-value from t1 to the current t-value
+    cum_arc_lengths = compute_cumulative_distance(*bspline(t_values_dense).T)
+
+    # Normalize arc lengths to [0, 1]
+    total_length = cum_arc_lengths[-1]
+    normalized_arc_lengths = np.array(cum_arc_lengths) / total_length
+
+    if inverse:
+        # Interpolation function for the inverse (this will map [t1, t2] back to [0, 1])
+        inverse_translation_func = interp1d(t_values_dense, normalized_arc_lengths, kind='linear', fill_value="extrapolate")
+        return inverse_translation_func
+
+    # Interpolation function (this will map [0, 1] to [t1, t2])
+    translation_func = interp1d(normalized_arc_lengths, t_values_dense, kind='linear', fill_value="extrapolate")
+    return translation_func
+
+def create_translation_function_old(
     bspline_eval, 
     ticks, 
     curve_mesh_intersects, 
