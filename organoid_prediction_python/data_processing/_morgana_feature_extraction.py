@@ -55,7 +55,8 @@ def calculate_morgana_shapes(
     """
     max_vals = np.array([np.max(img) for img in masks])
     empty_img_indices = np.squeeze(np.argwhere(max_vals==0))
-    
+    if empty_img_indices.shape == ():
+        empty_img_indices = [empty_img_indices]
     if parrallel <= 1:
         props = []
         for i in tqdm.trange(0,len(masks),1):
