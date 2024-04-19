@@ -108,26 +108,32 @@ def differential_standard_scaling(
         return (matrix-mean)/stdd
         
     df_no_scaling = dataframe[columns_unscaled]
-    df_reg_scaling = dataframe[columns_regular]
-    df_index_scaling = dataframe[columns_by_index]
-    df_group_scaling = dataframe[columns_group_scaling]
+    
+    df_reg_scaling = None
+    if (not columns_regular == []) and (columns_regular is not None):
+        df_reg_scaling = dataframe[columns_regular]
+        df_reg_scaling = pd.DataFrame(
+            StandardScaler().fit_transform(df_reg_scaling), 
+            columns=columns_regular,
+            index = df_reg_scaling.index
+        )
+    
+    df_index_scaling = None
+    if (not columns_by_index == []) and (columns_by_index is not None):
+        df_index_scaling = dataframe[columns_by_index]
+        df_index_scaling = standardscale_per_plate(
+            df_index_scaling,
+            grouping_keys=by_index_grouping
+        )
 
-    df_reg_scaling = pd.DataFrame(
-        StandardScaler().fit_transform(df_reg_scaling), 
-        columns=columns_regular,
-        index = df_reg_scaling.index
-    )
-    
-    df_index_scaling = standardscale_per_plate(
-        df_index_scaling,
-        grouping_keys=by_index_grouping
-    )
-    
-    df_group_scaling = pd.DataFrame(
-        group_scaling(df_group_scaling),
-        columns=columns_group_scaling,
-        index=df_group_scaling.index
-    )
+    df_group_scaling = None
+    if (not columns_group_scaling == []) and (columns_group_scaling is not None):
+        df_group_scaling = dataframe[columns_group_scaling]
+        df_group_scaling = pd.DataFrame(
+            group_scaling(df_group_scaling),
+            columns=columns_group_scaling,
+            index=df_group_scaling.index
+        )
 
     return pd.concat([df_no_scaling,df_reg_scaling,df_index_scaling,df_group_scaling],axis=1)
 
