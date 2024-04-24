@@ -169,14 +169,16 @@ def percentile_scale_per_plate(
     grouping_keys: list =["Run", "Plate"],
 ) -> pd.DataFrame:
     """
-    Function that performs standard-scaling / z-normalisation in subgroups like 
+    Function that performs scaling based on percentiles in subgroups like 
     plates of samples. The grouping_keys specify the index levels which will be 
-    grouped before being z-normalised / standard-scaled. 
-
+    grouped before being scaled.
     Parameters
     ----------
     dataframe: pd.DataFrame
         Input DataFrame that will be processed. Must be a multi-index DataFrame
+    percentile: float
+        defines bottom nth percentile ad top (100 - n)th percentiles which are used
+        as min and max for scaling
     grouping_keys: list
         list of strings that are part of the multiindex which will be used for
         grouping
