@@ -86,17 +86,18 @@ def get_dash_app_3D_scatter_hover_images(
     x,y,z = [dataframe[key].to_numpy() for key in plot_keys]
 
     # Make the plot. 
-    fig = go.Figure(data=[go.Scatter3d(
-        x=x,
-        y=y,
-        z=z,
-        mode='markers',
-        opacity=0.7,
-        marker=dict(
-            size=5,
-            color=colors,
-        )
-    )])
+    fig = go.Figure(
+        data=[go.Scatter3d(
+            x=x,
+            y=y,
+            z=z,
+            mode='markers',
+            opacity=0.7,
+            marker=dict(
+                size=5,
+                color=colors,
+            ))],
+    )
 
     # The plot's hover information is set to "none" and its hover template is set 
     # to None to prevent default hover information from being displayed. The plot's 
@@ -109,7 +110,13 @@ def get_dash_app_3D_scatter_hover_images(
     fig.update_layout(
         autosize=False,
         width=1500,
-        height=800,)
+        height=800,
+        scene = dict(
+            xaxis_title=plot_keys[0],
+            yaxis_title=plot_keys[1],
+            zaxis_title=plot_keys[2]
+        ),
+    )
 
 
     # Definition of a JupyterDash application and creates a layout 
@@ -241,7 +248,12 @@ def get_dash_app_2D_scatter_hover_images(
     fig.update_layout(
         autosize=False,
         width=1000,
-        height=1000,)
+        height=1000,
+        scene = dict(
+            xaxis_title=plot_keys[0],
+            yaxis_title=plot_keys[1],
+        )
+    )
 
 
     # Definition of a JupyterDash application and creates a layout 
