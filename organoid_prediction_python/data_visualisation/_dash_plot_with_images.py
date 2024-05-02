@@ -39,6 +39,7 @@ def get_dash_app_3D_scatter_hover_images(
     hue:str,
     images:np.ndarray,
     additional_info: str = "",
+    image_size = 200,
 ):
     """
     The get_dash_app_3D_scatter_hover_images() function creates a Dash app that displays a 3D 
@@ -162,7 +163,7 @@ def get_dash_app_3D_scatter_hover_images(
                 ),
                 html.P(hue + ": " + str(labels[num]), style={'font-weight': 'bold'}),
                 html.P(additional_info + ": " + str(add_info[num]), style={'font-weight': 'bold'})
-            ], style={'width': '200px', 'white-space': 'normal'})
+            ], style={'width': f'{image_size}px', 'white-space': 'normal'})
         ]
 
         return True, bbox, children
