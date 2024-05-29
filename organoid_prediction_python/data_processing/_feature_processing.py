@@ -100,6 +100,8 @@ def differential_standard_scaling(
     Group scaling applies standard scaling based on the mean and standard deviation 
     of the entire column group.
     """
+    def std_scaler(x):
+        return (x- x.mean()) / x.std()
 
     def group_scaling(df):
         matrix = df.to_numpy()
@@ -112,11 +114,7 @@ def differential_standard_scaling(
     df_reg_scaling = None
     if (not columns_regular == []) and (columns_regular is not None):
         df_reg_scaling = dataframe[columns_regular]
-        df_reg_scaling = pd.DataFrame(
-            StandardScaler().fit_transform(df_reg_scaling), 
-            columns=columns_regular,
-            index = df_reg_scaling.index
-        )
+        df_reg_scaling = df_reg_scaling.apply(std_scaler)
     
     df_index_scaling = None
     if (not columns_by_index == []) and (columns_by_index is not None):
